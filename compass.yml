@@ -1,0 +1,16 @@
+name: agl-vibe-studio
+id: ari:cloud:compass:2eefe999-d61b-469c-92ef-31fc5e9b3f13:component/ace244a1-3ae8-43fb-8c96-347d12170341/eb481a07-f4f6-40d5-a2fa-69b15182502e
+description: Create, launch, manage, and scale fully custom on-chain applications, linear bonding curve tokens, DAOs, GameFi reward structures, and autonomous AI agents in minutes. No Solidity experience required
+configVersion: 1
+typeId: SERVICE
+fields:
+  tier: 4
+links:
+  - name: null
+    type: REPOSITORY
+    url: https://github.com/Boomtoknlab/agl-vibe-studio
+relationships:
+  DEPENDS_ON: []
+labels:
+  - source:github
+customFields: null
