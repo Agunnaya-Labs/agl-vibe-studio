@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { HelmetProvider, Helmet } from "react-helmet-async";
 import { User, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import { auth } from "./lib/firebase";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import WalletModal from "./components/WalletModal";
@@ -551,6 +552,7 @@ export default function App() {
           <meta name="twitter:card" content="summary_large_image" />
         </Helmet>
         <LandingPage onLaunchApp={() => setIsLaunched(true)} />
+        <SpeedInsights />
       </HelmetProvider>
     );
   }
@@ -677,6 +679,7 @@ export default function App() {
           </div>
         )}
       </div>
+      <SpeedInsights />
     </HelmetProvider>
   );
 }
