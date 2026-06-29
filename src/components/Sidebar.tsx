@@ -13,7 +13,10 @@ import {
   Rocket,
   Gift,
   HardDrive,
-  Mail
+  Mail,
+  PieChart,
+  DollarSign,
+  Trophy
 } from "lucide-react";
 
 interface SidebarProps {
@@ -37,6 +40,10 @@ export default function Sidebar({ currentTab, onSelectTab, isAdmin, onGoHome }: 
     { id: "ai-agents", label: "AI Agent Studio", icon: Bot, category: "Assets & Creation" },
     { id: "defi", label: "Staking & Swaps", icon: Coins, category: "DeFi Tools" },
     { id: "analytics", label: "Base Analytics", icon: BarChart3, category: "DeFi Tools" },
+    { id: "portfolio-analytics", label: "Portfolio Analytics", icon: PieChart, category: "DeFi Tools", highlight: true },
+    { id: "bonding-curve-analytics", label: "Curve Performance", icon: TrendingUp, category: "DeFi Tools", highlight: true },
+    { id: "revenue-analytics", label: "Revenue Tracking", icon: DollarSign, category: "DeFi Tools", highlight: true },
+    { id: "leaderboards", label: "Leaderboards", icon: Trophy, category: "DeFi Tools", highlight: true },
     { id: "referrals", label: "Referral Rewards", icon: Gift, category: "DeFi Tools" },
   ];
 
