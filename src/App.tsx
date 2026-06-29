@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { HelmetProvider, Helmet } from "react-helmet-async";
 import { User, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import { auth } from "./lib/firebase";
@@ -6,36 +6,29 @@ import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import WalletModal from "./components/WalletModal";
 import AIAssistantSidebar from "./components/AIAssistantSidebar";
-import PageLoader from "./components/PageLoader";
-import { ErrorBoundary } from "./components/ErrorBoundary";
-import { NetworkErrorBoundary } from "./components/NetworkErrorBoundary";
 
-// Eager load landing page (critical path)
+// Pages
 import LandingPage from "./pages/LandingPage";
-
-// Lazy load other pages for code splitting
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
-const ExplorePage = lazy(() => import("./pages/ExplorePage"));
-const CreatePage = lazy(() => import("./pages/CreatePage"));
-const TradePage = lazy(() => import("./pages/TradePage"));
-const NFTStudioPage = lazy(() => import("./pages/NFTStudioPage"));
-const DAOBuilderPage = lazy(() => import("./pages/DAOBuilderPage"));
-const GameFiPage = lazy(() => import("./pages/GameFiPage"));
-const AgentStudioPage = lazy(() => import("./pages/AgentStudioPage"));
-const DeFiPage = lazy(() => import("./pages/DeFiPage"));
-const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
-const AdminPanelPage = lazy(() => import("./pages/AdminPanelPage"));
-const ReferralPage = lazy(() => import("./pages/ReferralPage"));
-const GoogleDrivePage = lazy(() => import("./pages/GoogleDrivePage"));
-const GmailPage = lazy(() => import("./pages/GmailPage"));
+import DashboardPage from "./pages/DashboardPage";
+import ExplorePage from "./pages/ExplorePage";
+import CreatePage from "./pages/CreatePage";
+import TradePage from "./pages/TradePage";
+import NFTStudioPage from "./pages/NFTStudioPage";
+import DAOBuilderPage from "./pages/DAOBuilderPage";
+import GameFiPage from "./pages/GameFiPage";
+import AgentStudioPage from "./pages/AgentStudioPage";
+import DeFiPage from "./pages/DeFiPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
+import AdminPanelPage from "./pages/AdminPanelPage";
+import ReferralPage from "./pages/ReferralPage";
+import GoogleDrivePage from "./pages/GoogleDrivePage";
+import GmailPage from "./pages/GmailPage";
 
 // Database & Utilities
 import { AgunnayaDatabase } from "./lib/db";
 import { WalletState, Token, NFTCollection, DAO, GameFiProject, AIAgent, Activity } from "./types";
 import { TerminalLine } from "./components/TerminalLog";
 import { BrainCircuit } from "lucide-react";
-import { getPageSEO, defaultSEO } from "./lib/seo";
-import SEOHead from "./components/SEOHead";
 
 export default function App() {
   const [isLaunched, setIsLaunched] = useState(false);
@@ -410,8 +403,7 @@ export default function App() {
     switch (currentTab) {
       case "dashboard":
         return (
-          <Suspense fallback={<PageLoader />}>
-            <DashboardPage
+          <DashboardPage
             wallet={wallet}
             userTokens={tokens}
             userNFTs={nfts}
@@ -421,148 +413,123 @@ export default function App() {
             activities={activities}
             onOpenConnect={() => setIsWalletModalOpen(true)}
             onSelectTab={(tab) => setCurrentTab(tab)}
-            />
-          </Suspense>
+          />
         );
       case "explore":
         return (
-          <Suspense fallback={<PageLoader />}>
-            <ExplorePage
-              tokens={tokens}
-              onSelectToken={(token) => setSelectedToken(token)}
-            />
-          </Suspense>
+          <ExplorePage
+            tokens={tokens}
+            onSelectToken={(token) => setSelectedToken(token)}
+          />
         );
       case "ai-builder":
         return (
-          <Suspense fallback={<PageLoader />}>
-            <CreatePage
-              wallet={wallet}
-              onLaunchSuccess={(newToken) => {
-                refreshAllData();
-                setSelectedToken(newToken);
-              }}
-              onRefreshWallet={refreshAllData}
-              addTerminalLog={addTerminalLog}
-              showToast={showToast}
-            />
-          </Suspense>
+          <CreatePage
+            wallet={wallet}
+            onLaunchSuccess={(newToken) => {
+              refreshAllData();
+              setSelectedToken(newToken); // directly open the trading page for new token!
+            }}
+            onRefreshWallet={refreshAllData}
+            addTerminalLog={addTerminalLog}
+            showToast={showToast}
+          />
         );
       case "nfts":
         return (
-          <Suspense fallback={<PageLoader />}>
-            <NFTStudioPage
-              wallet={wallet}
-              collections={nfts}
-              onRefreshNFTs={refreshAllData}
-              addTerminalLog={addTerminalLog}
-              showToast={showToast}
-            />
-          </Suspense>
+          <NFTStudioPage
+            wallet={wallet}
+            collections={nfts}
+            onRefreshNFTs={refreshAllData}
+            addTerminalLog={addTerminalLog}
+            showToast={showToast}
+          />
         );
       case "daos":
         return (
-          <Suspense fallback={<PageLoader />}>
-            <DAOBuilderPage
-              wallet={wallet}
-              daos={daos}
-              onRefreshDAOs={refreshAllData}
-              addTerminalLog={addTerminalLog}
-              showToast={showToast}
-            />
-          </Suspense>
+          <DAOBuilderPage
+            wallet={wallet}
+            daos={daos}
+            onRefreshDAOs={refreshAllData}
+            addTerminalLog={addTerminalLog}
+            showToast={showToast}
+          />
         );
       case "gamefi":
         return (
-          <Suspense fallback={<PageLoader />}>
-            <GameFiPage
-              wallet={wallet}
-              games={games}
-              onRefreshGames={refreshAllData}
-              addTerminalLog={addTerminalLog}
-              showToast={showToast}
-            />
-          </Suspense>
+          <GameFiPage
+            wallet={wallet}
+            games={games}
+            onRefreshGames={refreshAllData}
+            addTerminalLog={addTerminalLog}
+            showToast={showToast}
+          />
         );
       case "ai-agents":
         return (
-          <Suspense fallback={<PageLoader />}>
-            <AgentStudioPage
-              wallet={wallet}
-              agents={agents}
-              onRefreshAgents={refreshAllData}
-              addTerminalLog={addTerminalLog}
-              showToast={showToast}
-            />
-          </Suspense>
+          <AgentStudioPage
+            wallet={wallet}
+            agents={agents}
+            onRefreshAgents={refreshAllData}
+            addTerminalLog={addTerminalLog}
+            showToast={showToast}
+          />
         );
       case "defi":
         return (
-          <Suspense fallback={<PageLoader />}>
-            <DeFiPage
-              wallet={wallet}
-              onRefreshWallet={refreshAllData}
-              addTerminalLog={addTerminalLog}
-              showToast={showToast}
-            />
-          </Suspense>
+          <DeFiPage
+            wallet={wallet}
+            onRefreshWallet={refreshAllData}
+            addTerminalLog={addTerminalLog}
+            showToast={showToast}
+          />
         );
       case "analytics":
         return (
-          <Suspense fallback={<PageLoader />}>
-            <AnalyticsPage
-              tokens={tokens}
-              onSelectToken={(token) => setSelectedToken(token)}
-            />
-          </Suspense>
+          <AnalyticsPage
+            tokens={tokens}
+            onSelectToken={(token) => setSelectedToken(token)}
+          />
         );
       case "admin":
         return (
-          <Suspense fallback={<PageLoader />}>
-            <AdminPanelPage
-              tokens={tokens}
-              onRefreshTokens={refreshAllData}
-              addTerminalLog={addTerminalLog}
-              showToast={showToast}
-            />
-          </Suspense>
+          <AdminPanelPage
+            tokens={tokens}
+            onRefreshTokens={refreshAllData}
+            addTerminalLog={addTerminalLog}
+            showToast={showToast}
+          />
         );
       case "referrals":
         return (
-          <Suspense fallback={<PageLoader />}>
-            <ReferralPage
-              wallet={wallet}
-              onOpenConnect={() => setIsWalletModalOpen(true)}
-              onRefreshWallet={refreshAllData}
-              addTerminalLog={addTerminalLog}
-              showToast={showToast}
-            />
-          </Suspense>
+          <ReferralPage
+            wallet={wallet}
+            onOpenConnect={() => setIsWalletModalOpen(true)}
+            onRefreshWallet={refreshAllData}
+            addTerminalLog={addTerminalLog}
+            showToast={showToast}
+          />
         );
       case "gdrive":
         return (
-          <Suspense fallback={<PageLoader />}>
-            <GoogleDrivePage
-              firebaseUser={firebaseUser}
-              driveAccessToken={driveAccessToken}
-              onAuthorizeDrive={handleAuthorizeDrive}
-              addTerminalLog={addTerminalLog}
-              showToast={showToast}
-              onRefreshAllData={refreshAllData}
-            />
-          </Suspense>
+          <GoogleDrivePage
+            firebaseUser={firebaseUser}
+            driveAccessToken={driveAccessToken}
+            onAuthorizeDrive={handleAuthorizeDrive}
+            addTerminalLog={addTerminalLog}
+            showToast={showToast}
+            onRefreshAllData={refreshAllData}
+          />
         );
       case "gmail":
         return (
-          <Suspense fallback={<PageLoader />}>
-            <GmailPage
-              firebaseUser={firebaseUser}
-              driveAccessToken={driveAccessToken}
-              onAuthorizeDrive={handleAuthorizeDrive}
-              addTerminalLog={addTerminalLog}
-              showToast={showToast}
-            />
-          </Suspense>
+          <GmailPage
+            firebaseUser={firebaseUser}
+            driveAccessToken={driveAccessToken}
+            onAuthorizeDrive={handleAuthorizeDrive}
+            addTerminalLog={addTerminalLog}
+            showToast={showToast}
+          />
         );
       default:
         return <div>Tab not found</div>;
@@ -574,20 +541,32 @@ export default function App() {
   if (!isLaunched) {
     return (
       <HelmetProvider>
-        <SEOHead seo={defaultSEO} />
+        <Helmet>
+          <title>Agunnaya Labs Studio - High Performance Web3 Developer Studio</title>
+          <meta name="description" content="Decentralized on-chain developer studio with AI-powered builders, advanced DeFi swaps, staking, DAO voting tools, and smart token launchpads." />
+          <meta property="og:title" content="Agunnaya Labs Studio - High Performance Web3 Developer Studio" />
+          <meta property="og:description" content="Decentralized on-chain developer studio with AI-powered builders, advanced DeFi swaps, staking, DAO voting tools, and smart token launchpads." />
+          <meta property="og:image" content="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80" />
+          <meta property="og:url" content="https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/" />
+          <meta name="twitter:card" content="summary_large_image" />
+        </Helmet>
         <LandingPage onLaunchApp={() => setIsLaunched(true)} />
       </HelmetProvider>
     );
   }
 
-  const pageSEO = getPageSEO(currentTab);
-
   return (
-    <NetworkErrorBoundary>
-      <ErrorBoundary>
-        <HelmetProvider>
-          <SEOHead seo={pageSEO} />
-          <div id="studio-app-root" className="min-h-screen bg-[#050505] text-white flex overflow-hidden">
+    <HelmetProvider>
+      <Helmet>
+        <title>{meta.title}</title>
+        <meta name="description" content={meta.description} />
+        <meta property="og:title" content={meta.title} />
+        <meta property="og:description" content={meta.description} />
+        <meta property="og:image" content={meta.image} />
+        <meta property="og:url" content={meta.url} />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
+      <div id="studio-app-root" className="min-h-screen bg-[#050505] text-white flex overflow-hidden">
         {/* Side Navigation bar */}
         <Sidebar 
           currentTab={selectedToken ? "explore" : currentTab} 
@@ -697,9 +676,7 @@ export default function App() {
             </div>
           </div>
         )}
-          </div>
-        </HelmetProvider>
-      </ErrorBoundary>
-    </NetworkErrorBoundary>
+      </div>
+    </HelmetProvider>
   );
 }

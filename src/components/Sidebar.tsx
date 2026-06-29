@@ -15,7 +15,6 @@ import {
   HardDrive,
   Mail
 } from "lucide-react";
-import { useImage } from "../lib/assetManager";
 
 interface SidebarProps {
   currentTab: string;
@@ -25,8 +24,6 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ currentTab, onSelectTab, isAdmin, onGoHome }: SidebarProps) {
-  const logoImage = useImage('agunnaya-logo');
-  
   const menuItems = [
     { id: "landing", label: "Studio Home", icon: Sparkles, category: "Welcome" },
     { id: "dashboard", label: "My Hub", icon: LayoutDashboard, category: "Workspace" },
@@ -57,9 +54,10 @@ export default function Sidebar({ currentTab, onSelectTab, isAdmin, onGoHome }: 
         <div className="h-16 flex flex-col justify-center px-6 border-b border-white/10 bg-[#0a0a0a]/60">
           <div className="flex items-center gap-2">
             <img
-              src={logoImage}
-              alt="Agunnaya Labs Logo"
+              src="/src/assets/images/agunnaya_logo_1782747905258.jpg"
+              alt="AL"
               className="w-8 h-8 rounded-lg object-cover shadow-lg shadow-blue-500/20 border border-white/10"
+              referrerPolicy="no-referrer"
             />
             <span className="font-display font-bold text-white text-base tracking-tight flex items-center gap-1.5">
               Agunnaya <span className="text-[10px] bg-brand-purple/20 text-brand-purple px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Labs</span>
