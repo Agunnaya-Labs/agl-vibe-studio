@@ -1,0 +1,114 @@
+{
+  "name": "Agunnaya Labs Studio - AI Web3 Creation Engine",
+  "short_name": "Agunnaya Studio",
+  "description": "Create, launch, and scale smart contracts, ERC-20 tokens, DAOs, AI agents, and GameFi projects on Base mainnet",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#050505",
+  "theme_color": "#0052FF",
+  "dir": "ltr",
+  "lang": "en-US",
+  "categories": ["productivity", "utilities", "business"],
+  "screenshots": [
+    {
+      "src": "/images/brand/agunnaya-logo.png",
+      "type": "image/png",
+      "sizes": "500x500",
+      "form_factor": "narrow",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/backgrounds/hero-gradient.png",
+      "type": "image/png",
+      "sizes": "1920x1080",
+      "form_factor": "wide",
+      "purpose": "any"
+    }
+  ],
+  "icons": [
+    {
+      "src": "/images/brand/agunnaya-logo.png",
+      "type": "image/png",
+      "sizes": "500x500",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/brand/agunnaya-logo.png",
+      "type": "image/png",
+      "sizes": "500x500",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "AI Contract Builder",
+      "short_name": "Create Contract",
+      "description": "Build smart contracts with AI",
+      "url": "/?tab=ai-builder",
+      "icons": [
+        {
+          "src": "/images/brand/agunnaya-logo.png",
+          "type": "image/png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Explore Tokens",
+      "short_name": "Explore",
+      "description": "Browse and trade tokens",
+      "url": "/?tab=explore",
+      "icons": [
+        {
+          "src": "/images/brand/agunnaya-logo.png",
+          "type": "image/png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "NFT Studio",
+      "short_name": "NFTs",
+      "description": "Create NFT collections",
+      "url": "/?tab=nfts",
+      "icons": [
+        {
+          "src": "/images/brand/agunnaya-logo.png",
+          "type": "image/png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "DAO Builder",
+      "short_name": "DAOs",
+      "description": "Build decentralized organizations",
+      "url": "/?tab=daos",
+      "icons": [
+        {
+          "src": "/images/brand/agunnaya-logo.png",
+          "type": "image/png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+agunnaya",
+      "url": "/protocol?url=%s"
+    }
+  ]
+}
