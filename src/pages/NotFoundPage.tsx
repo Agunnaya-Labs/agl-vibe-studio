@@ -1,8 +1,9 @@
 import { ArrowLeft, Home, Search } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 export default function NotFoundPage() {
-  const navigate = useNavigate();
+  const goHome = () => window.location.href = '/';
+  const goBack = () => window.history.back();
+  const goExplore = () => window.location.href = '/explore';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
@@ -30,7 +31,7 @@ export default function NotFoundPage() {
         {/* Quick Links */}
         <div className="grid grid-cols-1 gap-3 mb-6">
           <button
-            onClick={() => navigate('/')}
+            onClick={goHome}
             className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 px-4 rounded-lg transition-all duration-300 font-semibold"
           >
             <Home className="w-5 h-5" />
@@ -38,7 +39,7 @@ export default function NotFoundPage() {
           </button>
           
           <button
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             className="flex items-center justify-center gap-2 w-full bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded-lg transition-colors font-semibold"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -46,7 +47,7 @@ export default function NotFoundPage() {
           </button>
 
           <button
-            onClick={() => navigate('/explore')}
+            onClick={goExplore}
             className="flex items-center justify-center gap-2 w-full bg-slate-800 hover:bg-slate-700 text-white py-3 px-4 rounded-lg transition-colors font-semibold"
           >
             <Search className="w-5 h-5" />

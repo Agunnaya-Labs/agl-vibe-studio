@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { HelmetProvider, Helmet } from "react-helmet-async";
 import { User, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import { auth } from "./lib/firebase";
@@ -6,25 +6,28 @@ import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import WalletModal from "./components/WalletModal";
 import AIAssistantSidebar from "./components/AIAssistantSidebar";
+import PageLoader from "./components/PageLoader";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { NetworkErrorBoundary } from "./components/NetworkErrorBoundary";
 
-// Pages
+// Eager load landing page (critical path)
 import LandingPage from "./pages/LandingPage";
-import DashboardPage from "./pages/DashboardPage";
-import ExplorePage from "./pages/ExplorePage";
-import CreatePage from "./pages/CreatePage";
-import TradePage from "./pages/TradePage";
-import NFTStudioPage from "./pages/NFTStudioPage";
-import DAOBuilderPage from "./pages/DAOBuilderPage";
-import GameFiPage from "./pages/GameFiPage";
-import AgentStudioPage from "./pages/AgentStudioPage";
-import DeFiPage from "./pages/DeFiPage";
-import AnalyticsPage from "./pages/AnalyticsPage";
-import AdminPanelPage from "./pages/AdminPanelPage";
-import ReferralPage from "./pages/ReferralPage";
-import GoogleDrivePage from "./pages/GoogleDrivePage";
-import GmailPage from "./pages/GmailPage";
+
+// Lazy load other pages for code splitting
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const ExplorePage = lazy(() => import("./pages/ExplorePage"));
+const CreatePage = lazy(() => import("./pages/CreatePage"));
+const TradePage = lazy(() => import("./pages/TradePage"));
+const NFTStudioPage = lazy(() => import("./pages/NFTStudioPage"));
+const DAOBuilderPage = lazy(() => import("./pages/DAOBuilderPage"));
+const GameFiPage = lazy(() => import("./pages/GameFiPage"));
+const AgentStudioPage = lazy(() => import("./pages/AgentStudioPage"));
+const DeFiPage = lazy(() => import("./pages/DeFiPage"));
+const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
+const AdminPanelPage = lazy(() => import("./pages/AdminPanelPage"));
+const ReferralPage = lazy(() => import("./pages/ReferralPage"));
+const GoogleDrivePage = lazy(() => import("./pages/GoogleDrivePage"));
+const GmailPage = lazy(() => import("./pages/GmailPage"));
 
 // Database & Utilities
 import { AgunnayaDatabase } from "./lib/db";
@@ -405,7 +408,8 @@ export default function App() {
     switch (currentTab) {
       case "dashboard":
         return (
-          <DashboardPage
+          <Suspense fallback={<PageLoader />}>
+            <DashboardPage
             wallet={wallet}
             userTokens={tokens}
             userNFTs={nfts}
@@ -415,123 +419,148 @@ export default function App() {
             activities={activities}
             onOpenConnect={() => setIsWalletModalOpen(true)}
             onSelectTab={(tab) => setCurrentTab(tab)}
-          />
+            />
+          </Suspense>
         );
       case "explore":
         return (
-          <ExplorePage
-            tokens={tokens}
-            onSelectToken={(token) => setSelectedToken(token)}
-          />
+          <Suspense fallback={<PageLoader />}>
+            <ExplorePage
+              tokens={tokens}
+              onSelectToken={(token) => setSelectedToken(token)}
+            />
+          </Suspense>
         );
       case "ai-builder":
         return (
-          <CreatePage
-            wallet={wallet}
-            onLaunchSuccess={(newToken) => {
-              refreshAllData();
-              setSelectedToken(newToken); // directly open the trading page for new token!
-            }}
-            onRefreshWallet={refreshAllData}
-            addTerminalLog={addTerminalLog}
-            showToast={showToast}
-          />
+          <Suspense fallback={<PageLoader />}>
+            <CreatePage
+              wallet={wallet}
+              onLaunchSuccess={(newToken) => {
+                refreshAllData();
+                setSelectedToken(newToken);
+              }}
+              onRefreshWallet={refreshAllData}
+              addTerminalLog={addTerminalLog}
+              showToast={showToast}
+            />
+          </Suspense>
         );
       case "nfts":
         return (
-          <NFTStudioPage
-            wallet={wallet}
-            collections={nfts}
-            onRefreshNFTs={refreshAllData}
-            addTerminalLog={addTerminalLog}
-            showToast={showToast}
-          />
+          <Suspense fallback={<PageLoader />}>
+            <NFTStudioPage
+              wallet={wallet}
+              collections={nfts}
+              onRefreshNFTs={refreshAllData}
+              addTerminalLog={addTerminalLog}
+              showToast={showToast}
+            />
+          </Suspense>
         );
       case "daos":
         return (
-          <DAOBuilderPage
-            wallet={wallet}
-            daos={daos}
-            onRefreshDAOs={refreshAllData}
-            addTerminalLog={addTerminalLog}
-            showToast={showToast}
-          />
+          <Suspense fallback={<PageLoader />}>
+            <DAOBuilderPage
+              wallet={wallet}
+              daos={daos}
+              onRefreshDAOs={refreshAllData}
+              addTerminalLog={addTerminalLog}
+              showToast={showToast}
+            />
+          </Suspense>
         );
       case "gamefi":
         return (
-          <GameFiPage
-            wallet={wallet}
-            games={games}
-            onRefreshGames={refreshAllData}
-            addTerminalLog={addTerminalLog}
-            showToast={showToast}
-          />
+          <Suspense fallback={<PageLoader />}>
+            <GameFiPage
+              wallet={wallet}
+              games={games}
+              onRefreshGames={refreshAllData}
+              addTerminalLog={addTerminalLog}
+              showToast={showToast}
+            />
+          </Suspense>
         );
       case "ai-agents":
         return (
-          <AgentStudioPage
-            wallet={wallet}
-            agents={agents}
-            onRefreshAgents={refreshAllData}
-            addTerminalLog={addTerminalLog}
-            showToast={showToast}
-          />
+          <Suspense fallback={<PageLoader />}>
+            <AgentStudioPage
+              wallet={wallet}
+              agents={agents}
+              onRefreshAgents={refreshAllData}
+              addTerminalLog={addTerminalLog}
+              showToast={showToast}
+            />
+          </Suspense>
         );
       case "defi":
         return (
-          <DeFiPage
-            wallet={wallet}
-            onRefreshWallet={refreshAllData}
-            addTerminalLog={addTerminalLog}
-            showToast={showToast}
-          />
+          <Suspense fallback={<PageLoader />}>
+            <DeFiPage
+              wallet={wallet}
+              onRefreshWallet={refreshAllData}
+              addTerminalLog={addTerminalLog}
+              showToast={showToast}
+            />
+          </Suspense>
         );
       case "analytics":
         return (
-          <AnalyticsPage
-            tokens={tokens}
-            onSelectToken={(token) => setSelectedToken(token)}
-          />
+          <Suspense fallback={<PageLoader />}>
+            <AnalyticsPage
+              tokens={tokens}
+              onSelectToken={(token) => setSelectedToken(token)}
+            />
+          </Suspense>
         );
       case "admin":
         return (
-          <AdminPanelPage
-            tokens={tokens}
-            onRefreshTokens={refreshAllData}
-            addTerminalLog={addTerminalLog}
-            showToast={showToast}
-          />
+          <Suspense fallback={<PageLoader />}>
+            <AdminPanelPage
+              tokens={tokens}
+              onRefreshTokens={refreshAllData}
+              addTerminalLog={addTerminalLog}
+              showToast={showToast}
+            />
+          </Suspense>
         );
       case "referrals":
         return (
-          <ReferralPage
-            wallet={wallet}
-            onOpenConnect={() => setIsWalletModalOpen(true)}
-            onRefreshWallet={refreshAllData}
-            addTerminalLog={addTerminalLog}
-            showToast={showToast}
-          />
+          <Suspense fallback={<PageLoader />}>
+            <ReferralPage
+              wallet={wallet}
+              onOpenConnect={() => setIsWalletModalOpen(true)}
+              onRefreshWallet={refreshAllData}
+              addTerminalLog={addTerminalLog}
+              showToast={showToast}
+            />
+          </Suspense>
         );
       case "gdrive":
         return (
-          <GoogleDrivePage
-            firebaseUser={firebaseUser}
-            driveAccessToken={driveAccessToken}
-            onAuthorizeDrive={handleAuthorizeDrive}
-            addTerminalLog={addTerminalLog}
-            showToast={showToast}
-            onRefreshAllData={refreshAllData}
-          />
+          <Suspense fallback={<PageLoader />}>
+            <GoogleDrivePage
+              firebaseUser={firebaseUser}
+              driveAccessToken={driveAccessToken}
+              onAuthorizeDrive={handleAuthorizeDrive}
+              addTerminalLog={addTerminalLog}
+              showToast={showToast}
+              onRefreshAllData={refreshAllData}
+            />
+          </Suspense>
         );
       case "gmail":
         return (
-          <GmailPage
-            firebaseUser={firebaseUser}
-            driveAccessToken={driveAccessToken}
-            onAuthorizeDrive={handleAuthorizeDrive}
-            addTerminalLog={addTerminalLog}
-            showToast={showToast}
-          />
+          <Suspense fallback={<PageLoader />}>
+            <GmailPage
+              firebaseUser={firebaseUser}
+              driveAccessToken={driveAccessToken}
+              onAuthorizeDrive={handleAuthorizeDrive}
+              addTerminalLog={addTerminalLog}
+              showToast={showToast}
+            />
+          </Suspense>
         );
       default:
         return <div>Tab not found</div>;
