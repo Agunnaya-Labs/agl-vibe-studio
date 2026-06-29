@@ -1,20 +1,8 @@
 {
   "buildCommand": "npm run build",
-  "framework": "react",
+  "framework": "vite",
   "outputDirectory": "dist",
   "installCommand": "npm install",
-  "env": {
-    "VITE_GOOGLE_AI_KEY": "@google_ai_key",
-    "VITE_FIREBASE_CONFIG": "@firebase_config"
-  },
-  "regions": ["sfo1", "iad1", "lhr1", "sin1"],
-  "functions": {
-    "server.ts": {
-      "runtime": "nodejs20.x",
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  },
   "headers": [
     {
       "source": "/manifest.json",
