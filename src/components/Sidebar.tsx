@@ -48,13 +48,13 @@ export default function Sidebar({ currentTab, onSelectTab, isAdmin, onGoHome }: 
   const categories = Array.from(new Set(menuItems.map(item => item.category)));
 
   return (
-    <aside id="app-sidebar" className="hidden lg:flex w-64 border-r border-white/10 bg-[#0a0a0a] flex-col justify-between shrink-0 h-screen sticky top-0 overflow-y-auto">
+    <aside id="app-sidebar" className="w-64 border-r border-white/10 bg-[#0a0a0a] flex flex-col justify-between shrink-0 h-screen sticky top-0 overflow-y-auto">
       <div>
         {/* Brand Logo & Tagline */}
         <div className="h-16 flex flex-col justify-center px-6 border-b border-white/10 bg-[#0a0a0a]/60">
           <div className="flex items-center gap-2">
             <img
-              src="/assets/images/agunnaya_logo.png"
+              src="/src/assets/images/agunnaya_logo_1782747905258.jpg"
               alt="AL"
               className="w-8 h-8 rounded-lg object-cover shadow-lg shadow-blue-500/20 border border-white/10"
               referrerPolicy="no-referrer"

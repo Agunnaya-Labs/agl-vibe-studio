@@ -11,13 +11,10 @@ export default function WalletModal({ isOpen, onClose, onConnect }: WalletModalP
   if (!isOpen) return null;
 
   return (
-    <div id="wallet-modal-container" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" role="presentation">
+    <div id="wallet-modal-container" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
       <div 
         id="wallet-modal-panel"
         className="relative w-full max-w-md p-6 overflow-hidden rounded-2xl glass-panel border border-white/10 glow-border-purple animate-fade-in"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="wallet-modal-title"
       >
         {/* Glow effect */}
         <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-brand-purple/10 blur-3xl pointer-events-none"></div>
@@ -29,7 +26,7 @@ export default function WalletModal({ isOpen, onClose, onConnect }: WalletModalP
               <Wallet className="w-5 h-5 text-brand-purple" />
             </div>
             <div>
-              <h3 id="wallet-modal-title" className="text-lg font-semibold font-display tracking-tight text-white">Connect Wallet</h3>
+              <h3 className="text-lg font-semibold font-display tracking-tight text-white">Connect Wallet</h3>
               <p className="text-xs text-zinc-400">Select how you want to connect to Base</p>
             </div>
           </div>
@@ -37,7 +34,6 @@ export default function WalletModal({ isOpen, onClose, onConnect }: WalletModalP
             id="close-wallet-modal"
             onClick={onClose}
             className="p-1 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
-            aria-label="Close wallet connection dialog"
           >
             ✕
           </button>
