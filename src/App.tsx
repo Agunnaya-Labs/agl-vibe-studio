@@ -34,6 +34,8 @@ import { AgunnayaDatabase } from "./lib/db";
 import { WalletState, Token, NFTCollection, DAO, GameFiProject, AIAgent, Activity } from "./types";
 import { TerminalLine } from "./components/TerminalLog";
 import { BrainCircuit } from "lucide-react";
+import { getPageSEO, defaultSEO } from "./lib/seo";
+import SEOHead from "./components/SEOHead";
 
 export default function App() {
   const [isLaunched, setIsLaunched] = useState(false);
@@ -572,33 +574,19 @@ export default function App() {
   if (!isLaunched) {
     return (
       <HelmetProvider>
-        <Helmet>
-          <title>Agunnaya Labs Studio - High Performance Web3 Developer Studio</title>
-          <meta name="description" content="Decentralized on-chain developer studio with AI-powered builders, advanced DeFi swaps, staking, DAO voting tools, and smart token launchpads." />
-          <meta property="og:title" content="Agunnaya Labs Studio - High Performance Web3 Developer Studio" />
-          <meta property="og:description" content="Decentralized on-chain developer studio with AI-powered builders, advanced DeFi swaps, staking, DAO voting tools, and smart token launchpads." />
-          <meta property="og:image" content="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80" />
-          <meta property="og:url" content="https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/" />
-          <meta name="twitter:card" content="summary_large_image" />
-        </Helmet>
+        <SEOHead seo={defaultSEO} />
         <LandingPage onLaunchApp={() => setIsLaunched(true)} />
       </HelmetProvider>
     );
   }
 
+  const pageSEO = getPageSEO(currentTab);
+
   return (
     <NetworkErrorBoundary>
       <ErrorBoundary>
         <HelmetProvider>
-          <Helmet>
-            <title>{meta.title}</title>
-            <meta name="description" content={meta.description} />
-            <meta property="og:title" content={meta.title} />
-            <meta property="og:description" content={meta.description} />
-            <meta property="og:image" content={meta.image} />
-            <meta property="og:url" content={meta.url} />
-            <meta name="twitter:card" content="summary_large_image" />
-          </Helmet>
+          <SEOHead seo={pageSEO} />
           <div id="studio-app-root" className="min-h-screen bg-[#050505] text-white flex overflow-hidden">
         {/* Side Navigation bar */}
         <Sidebar 
