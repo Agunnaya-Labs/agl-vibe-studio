@@ -6,6 +6,8 @@ import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import WalletModal from "./components/WalletModal";
 import AIAssistantSidebar from "./components/AIAssistantSidebar";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { NetworkErrorBoundary } from "./components/NetworkErrorBoundary";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -556,17 +558,19 @@ export default function App() {
   }
 
   return (
-    <HelmetProvider>
-      <Helmet>
-        <title>{meta.title}</title>
-        <meta name="description" content={meta.description} />
-        <meta property="og:title" content={meta.title} />
-        <meta property="og:description" content={meta.description} />
-        <meta property="og:image" content={meta.image} />
-        <meta property="og:url" content={meta.url} />
-        <meta name="twitter:card" content="summary_large_image" />
-      </Helmet>
-      <div id="studio-app-root" className="min-h-screen bg-[#050505] text-white flex overflow-hidden">
+    <NetworkErrorBoundary>
+      <ErrorBoundary>
+        <HelmetProvider>
+          <Helmet>
+            <title>{meta.title}</title>
+            <meta name="description" content={meta.description} />
+            <meta property="og:title" content={meta.title} />
+            <meta property="og:description" content={meta.description} />
+            <meta property="og:image" content={meta.image} />
+            <meta property="og:url" content={meta.url} />
+            <meta name="twitter:card" content="summary_large_image" />
+          </Helmet>
+          <div id="studio-app-root" className="min-h-screen bg-[#050505] text-white flex overflow-hidden">
         {/* Side Navigation bar */}
         <Sidebar 
           currentTab={selectedToken ? "explore" : currentTab} 
@@ -676,7 +680,9 @@ export default function App() {
             </div>
           </div>
         )}
-      </div>
-    </HelmetProvider>
+          </div>
+        </HelmetProvider>
+      </ErrorBoundary>
+    </NetworkErrorBoundary>
   );
 }
