@@ -11,7 +11,9 @@ import {
   Settings,
   Layers,
   Rocket,
-  Gift
+  Gift,
+  HardDrive,
+  Mail
 } from "lucide-react";
 
 interface SidebarProps {
@@ -26,6 +28,8 @@ export default function Sidebar({ currentTab, onSelectTab, isAdmin, onGoHome }: 
     { id: "landing", label: "Studio Home", icon: Sparkles, category: "Welcome" },
     { id: "dashboard", label: "My Hub", icon: LayoutDashboard, category: "Workspace" },
     { id: "ai-builder", label: "AI Contract Builder", icon: Sparkles, category: "Workspace", highlight: true },
+    { id: "gdrive", label: "Google Drive Cloud", icon: HardDrive, category: "Workspace" },
+    { id: "gmail", label: "Gmail Automation", icon: Mail, category: "Workspace" },
     { id: "explore", label: "Bonding Curve Pad", icon: Rocket, category: "Assets & Creation" },
     { id: "nfts", label: "NFT Studio", icon: Disc, category: "Assets & Creation" },
     { id: "daos", label: "DAO Governance", icon: Users, category: "Assets & Creation" },
@@ -49,9 +53,12 @@ export default function Sidebar({ currentTab, onSelectTab, isAdmin, onGoHome }: 
         {/* Brand Logo & Tagline */}
         <div className="h-16 flex flex-col justify-center px-6 border-b border-white/10 bg-[#0a0a0a]/60">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#0052FF] to-[#A855F7] rounded-xl flex items-center justify-center font-black font-display text-xs text-white shadow-lg shadow-blue-500/20">
-              AL
-            </div>
+            <img
+              src="/src/assets/images/agunnaya_logo_1782747905258.jpg"
+              alt="AL"
+              className="w-8 h-8 rounded-lg object-cover shadow-lg shadow-blue-500/20 border border-white/10"
+              referrerPolicy="no-referrer"
+            />
             <span className="font-display font-bold text-white text-base tracking-tight flex items-center gap-1.5">
               Agunnaya <span className="text-[10px] bg-brand-purple/20 text-brand-purple px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Labs</span>
             </span>

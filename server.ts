@@ -146,6 +146,65 @@ Roleplay as this specific AI Agent. Speak intelligently, with confidence, referr
   }
 });
 
+// AI Gmail Assistant / Drafting Endpoint
+app.post("/api/ai/draft-email", async (req, res) => {
+  try {
+    const { prompt, originalEmail, agentProfile } = req.body;
+    if (!prompt) {
+      res.status(400).json({ error: "Prompt/Instruction is required to draft an email." });
+      return;
+    }
+
+    const client = getAIClient();
+
+    let systemInstruction = `You are a professional email composer and copywriter at Agunnaya Labs Studio. 
+Your task is to draft an email message (both a Subject and an HTML formatted Body) based on the user's instructions.
+Make sure the email is modern, extremely professional, has nice paragraphs, and looks premium.
+If a received email or previous context is provided, tailor the draft as a direct reply or response.`;
+
+    if (agentProfile) {
+      systemInstruction += `\nDraft this email from the persona of the AI Agent:
+- Name: ${agentProfile.name}
+- Token/Symbol: ${agentProfile.symbol}
+- Description: ${agentProfile.description}
+Write the email using this Agent's specific professional style, referring to autonomous blockchain cores, web3, and their project mission.`;
+    }
+
+    const promptMessage = originalEmail 
+      ? `Draft a reply to this email:
+Sender: ${originalEmail.from}
+Subject: ${originalEmail.subject}
+Snippet: ${originalEmail.snippet}
+Body: ${originalEmail.body}
+
+User instruction/guideline for response: ${prompt}`
+      : `Draft a new email with this instruction: ${prompt}`;
+
+    const response = await client.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: promptMessage,
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          required: ["subject", "body"],
+          properties: {
+            subject: { type: Type.STRING, description: "A catchy, polished, professional subject line" },
+            body: { type: Type.STRING, description: "The email body formatted with HTML (using simple tags like <p>, <br>, <strong>, <ul>, <li>, no full <html> block, just clean inline tags)" }
+          }
+        }
+      }
+    });
+
+    const text = response.text || "{}";
+    res.json(JSON.parse(text));
+  } catch (error: any) {
+    console.error("AI Email Draft Error:", error);
+    res.status(500).json({ error: error.message || "Could not generate email draft." });
+  }
+});
+
 // Support health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "active", network: "Base Mainnet & Sepolia Proxy", time: new Date() });

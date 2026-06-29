@@ -21,6 +21,8 @@ import DeFiPage from "./pages/DeFiPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import AdminPanelPage from "./pages/AdminPanelPage";
 import ReferralPage from "./pages/ReferralPage";
+import GoogleDrivePage from "./pages/GoogleDrivePage";
+import GmailPage from "./pages/GmailPage";
 
 // Database & Utilities
 import { AgunnayaDatabase } from "./lib/db";
@@ -41,6 +43,7 @@ export default function App() {
   // Firebase Auth state
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [driveAccessToken, setDriveAccessToken] = useState<string | null>(null);
 
   // Global State data
   const [wallet, setWallet] = useState<WalletState>(AgunnayaDatabase.getWallet());
@@ -129,10 +132,30 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  const DRIVE_SCOPES = [
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/drive.metadata",
+    "https://www.googleapis.com/auth/drive.metadata.readonly",
+    "https://mail.google.com/",
+    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/gmail.compose",
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.labels"
+  ];
+
   const handleSignInWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
+      DRIVE_SCOPES.forEach(scope => provider.addScope(scope));
       const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        setDriveAccessToken(credential.accessToken);
+        addTerminalLog("success", "GOOGLE_DRIVE: Google Drive access token loaded and cached in-memory.");
+      }
       showToast(`Welcome, ${result.user.displayName}! Cloud Sync active.`, "success");
       // Re-sync on log in
       await AgunnayaDatabase.syncAllFromFirestore();
@@ -143,9 +166,31 @@ export default function App() {
     }
   };
 
+  const handleAuthorizeDrive = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      DRIVE_SCOPES.forEach(scope => provider.addScope(scope));
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        setDriveAccessToken(credential.accessToken);
+        showToast("Google Drive authorized successfully!", "success");
+        addTerminalLog("success", "GOOGLE_DRIVE: Connection verified. Cloud snapshot storage authorized.");
+      } else {
+        throw new Error("No OAuth access token was returned.");
+      }
+      await AgunnayaDatabase.syncAllFromFirestore();
+      refreshAllData();
+    } catch (error) {
+      showToast("Google Drive authorization failed.", "error");
+      addTerminalLog("error", `DRIVE_AUTH_ERROR: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut(auth);
+      setDriveAccessToken(null); // Clear in-memory token cache on signout
       showToast("Signed out of Google account.", "info");
       refreshAllData();
     } catch (error) {
@@ -461,6 +506,27 @@ export default function App() {
             wallet={wallet}
             onOpenConnect={() => setIsWalletModalOpen(true)}
             onRefreshWallet={refreshAllData}
+            addTerminalLog={addTerminalLog}
+            showToast={showToast}
+          />
+        );
+      case "gdrive":
+        return (
+          <GoogleDrivePage
+            firebaseUser={firebaseUser}
+            driveAccessToken={driveAccessToken}
+            onAuthorizeDrive={handleAuthorizeDrive}
+            addTerminalLog={addTerminalLog}
+            showToast={showToast}
+            onRefreshAllData={refreshAllData}
+          />
+        );
+      case "gmail":
+        return (
+          <GmailPage
+            firebaseUser={firebaseUser}
+            driveAccessToken={driveAccessToken}
+            onAuthorizeDrive={handleAuthorizeDrive}
             addTerminalLog={addTerminalLog}
             showToast={showToast}
           />
