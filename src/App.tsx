@@ -19,15 +19,6 @@ import GameFiPage from "./pages/GameFiPage";
 import AgentStudioPage from "./pages/AgentStudioPage";
 import DeFiPage from "./pages/DeFiPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
-import PortfolioAnalyticsPage from "./pages/PortfolioAnalyticsPage";
-import BondingCurveAnalyticsPage from "./pages/BondingCurveAnalyticsPage";
-import RevenueAnalyticsPage from "./pages/RevenueAnalyticsPage";
-import LeaderboardsPage from "./pages/LeaderboardsPage";
-import PortfolioManagerPage from "./pages/PortfolioManagerPage";
-import AgentMarketplacePage from "./pages/AgentMarketplacePage";
-import SmartContractAuditorPage from "./pages/SmartContractAuditorPage";
-import NFTMetadataGeneratorPage from "./pages/NFTMetadataGeneratorPage";
-import GovernanceEnhancerPage from "./pages/GovernanceEnhancerPage";
 import AdminPanelPage from "./pages/AdminPanelPage";
 import ReferralPage from "./pages/ReferralPage";
 import GoogleDrivePage from "./pages/GoogleDrivePage";
@@ -498,79 +489,6 @@ export default function App() {
           <AnalyticsPage
             tokens={tokens}
             onSelectToken={(token) => setSelectedToken(token)}
-          />
-        );
-      case "portfolio-analytics":
-        return (
-          <PortfolioAnalyticsPage
-            userTokens={tokens}
-            userNFTs={nfts}
-            userAgents={agents}
-            walletBalance={wallet.balanceEth}
-            aglBalance={wallet.aglTokenBalance}
-            showToast={showToast}
-          />
-        );
-      case "bonding-curve-analytics":
-        return (
-          <BondingCurveAnalyticsPage
-            tokens={tokens}
-            onSelectToken={(token) => setSelectedToken(token)}
-            onRefresh={refreshAllData}
-          />
-        );
-      case "revenue-analytics":
-        return (
-          <RevenueAnalyticsPage
-            userTokens={tokens}
-            userAgents={agents}
-            referralCode={wallet.address?.slice(0, 8)}
-            aglTokenBalance={wallet.aglTokenBalance}
-            showToast={showToast}
-          />
-        );
-      case "leaderboards":
-        return (
-          <LeaderboardsPage
-            tokens={tokens}
-            agents={agents}
-            activities={activities}
-          />
-        );
-      case "portfolio-manager":
-        return (
-          <PortfolioManagerPage
-            userTokens={tokens}
-            userNFTs={nfts}
-            userAgents={agents}
-            walletBalance={wallet.balanceEth}
-            showToast={showToast}
-          />
-        );
-      case "agent-marketplace":
-        return (
-          <AgentMarketplacePage
-            userAgents={agents}
-            showToast={showToast}
-          />
-        );
-      case "smart-contract-auditor":
-        return (
-          <SmartContractAuditorPage
-            showToast={showToast}
-          />
-        );
-      case "nft-metadata-generator":
-        return (
-          <NFTMetadataGeneratorPage
-            showToast={showToast}
-          />
-        );
-      case "governance-enhancer":
-        return (
-          <GovernanceEnhancerPage
-            userDAOs={daos}
-            showToast={showToast}
           />
         );
       case "admin":
