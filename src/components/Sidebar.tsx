@@ -13,7 +13,15 @@ import {
   Rocket,
   Gift,
   HardDrive,
-  Mail
+  Mail,
+  PieChart,
+  DollarSign,
+  Trophy,
+  Briefcase,
+  Zap,
+  Shield,
+  Image,
+  Vote
 } from "lucide-react";
 
 interface SidebarProps {
@@ -28,15 +36,24 @@ export default function Sidebar({ currentTab, onSelectTab, isAdmin, onGoHome }: 
     { id: "landing", label: "Studio Home", icon: Sparkles, category: "Welcome" },
     { id: "dashboard", label: "My Hub", icon: LayoutDashboard, category: "Workspace" },
     { id: "ai-builder", label: "AI Contract Builder", icon: Sparkles, category: "Workspace", highlight: true },
+    { id: "smart-contract-auditor", label: "Contract Auditor", icon: Shield, category: "Workspace", highlight: true },
     { id: "gdrive", label: "Google Drive Cloud", icon: HardDrive, category: "Workspace" },
     { id: "gmail", label: "Gmail Automation", icon: Mail, category: "Workspace" },
     { id: "explore", label: "Bonding Curve Pad", icon: Rocket, category: "Assets & Creation" },
     { id: "nfts", label: "NFT Studio", icon: Disc, category: "Assets & Creation" },
+    { id: "nft-metadata-generator", label: "NFT Metadata Gen", icon: Image, category: "Assets & Creation", highlight: true },
     { id: "daos", label: "DAO Governance", icon: Users, category: "Assets & Creation" },
+    { id: "governance-enhancer", label: "Governance Hub", icon: Vote, category: "Assets & Creation", highlight: true },
     { id: "gamefi", label: "GameFi Arena", icon: Gamepad2, category: "Assets & Creation" },
     { id: "ai-agents", label: "AI Agent Studio", icon: Bot, category: "Assets & Creation" },
+    { id: "agent-marketplace", label: "Agent Marketplace", icon: Zap, category: "Assets & Creation", highlight: true },
     { id: "defi", label: "Staking & Swaps", icon: Coins, category: "DeFi Tools" },
     { id: "analytics", label: "Base Analytics", icon: BarChart3, category: "DeFi Tools" },
+    { id: "portfolio-analytics", label: "Portfolio Analytics", icon: PieChart, category: "DeFi Tools", highlight: true },
+    { id: "portfolio-manager", label: "Portfolio Manager", icon: Briefcase, category: "DeFi Tools", highlight: true },
+    { id: "bonding-curve-analytics", label: "Curve Performance", icon: TrendingUp, category: "DeFi Tools", highlight: true },
+    { id: "revenue-analytics", label: "Revenue Tracking", icon: DollarSign, category: "DeFi Tools", highlight: true },
+    { id: "leaderboards", label: "Leaderboards", icon: Trophy, category: "DeFi Tools", highlight: true },
     { id: "referrals", label: "Referral Rewards", icon: Gift, category: "DeFi Tools" },
   ];
 
