@@ -139,10 +139,9 @@ export default function LandingPage({ onLaunchApp }: LandingPageProps) {
         <div className="relative mt-12 mx-auto max-w-4xl rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(139,92,246,0.12)] bg-zinc-950/40 p-1.5 group">
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent z-10 pointer-events-none"></div>
           <img
-            src="/src/assets/images/agunnaya_banner_1782747920246.jpg"
+            src="/images/backgrounds/hero-gradient.png"
             alt="Agunnaya Labs Studio 3D Developer Workspace"
             className="w-full h-auto rounded-xl object-cover transition-transform duration-700 group-hover:scale-[1.01]"
-            referrerPolicy="no-referrer"
           />
         </div>
 
@@ -304,10 +303,9 @@ export default function LandingPage({ onLaunchApp }: LandingPageProps) {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <img
-                src="/src/assets/images/agunnaya_logo_1782747905258.jpg"
-                alt="AL"
+                src="/images/brand/agunnaya-logo.png"
+                alt="Agunnaya Labs Logo"
                 className="w-8 h-8 rounded-lg object-cover border border-white/10"
-                referrerPolicy="no-referrer"
               />
               <span className="font-display font-bold text-lg tracking-tight">
                 Agunnaya <span className="text-brand-purple">Labs</span>
