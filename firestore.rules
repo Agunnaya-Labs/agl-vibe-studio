@@ -1,0 +1,209 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Catch-All Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Global Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isEmailVerified() && request.auth.token.email == "support@neonrps.xyz";
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.]+$');
+    }
+
+    // 3. Entity Validation Helpers (The Anti-Update-Gap)
+    function isValidToken(data) {
+      return data.keys().hasAll(['address', 'name', 'symbol', 'creator', 'currentPrice', 'supply', 'createdAt'])
+        && data.address is string && data.address.size() >= 10 && data.address.size() <= 64
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.symbol is string && data.symbol.size() >= 1 && data.symbol.size() <= 10
+        && data.creator is string && data.creator.size() >= 10 && data.creator.size() <= 64
+        && data.currentPrice is number && data.currentPrice >= 0
+        && data.supply is number && data.supply >= 0
+        && data.createdAt is number;
+    }
+
+    function isValidNFTCollection(data) {
+      return data.keys().hasAll(['contractAddress', 'name', 'symbol', 'creator', 'mintPrice', 'currentSupply', 'maxSupply', 'createdAt'])
+        && data.contractAddress is string && data.contractAddress.size() >= 10 && data.contractAddress.size() <= 64
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.symbol is string && data.symbol.size() >= 1 && data.symbol.size() <= 10
+        && data.creator is string && data.creator.size() >= 10 && data.creator.size() <= 64
+        && data.mintPrice is number && data.mintPrice >= 0
+        && data.currentSupply is number && data.currentSupply >= 0
+        && data.maxSupply is number && data.maxSupply > 0
+        && data.createdAt is number;
+    }
+
+    function isValidDAO(data) {
+      return data.keys().hasAll(['contractAddress', 'name', 'symbol', 'creator', 'governanceTokenAddress', 'treasuryBalanceEth', 'memberCount', 'createdAt'])
+        && data.contractAddress is string && data.contractAddress.size() >= 10 && data.contractAddress.size() <= 64
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.symbol is string && data.symbol.size() >= 1 && data.symbol.size() <= 10
+        && data.creator is string && data.creator.size() >= 10 && data.creator.size() <= 64
+        && data.governanceTokenAddress is string
+        && data.treasuryBalanceEth is number && data.treasuryBalanceEth >= 0
+        && data.memberCount is number && data.memberCount >= 0
+        && data.createdAt is number;
+    }
+
+    function isValidGameFiProject(data) {
+      return data.keys().hasAll(['contractAddress', 'name', 'symbol', 'creator', 'prizePoolEth', 'createdAt'])
+        && data.contractAddress is string && data.contractAddress.size() >= 10 && data.contractAddress.size() <= 64
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.symbol is string && data.symbol.size() >= 1 && data.symbol.size() <= 10
+        && data.creator is string && data.creator.size() >= 10 && data.creator.size() <= 64
+        && data.prizePoolEth is number && data.prizePoolEth >= 0
+        && data.createdAt is number;
+    }
+
+    function isValidAIAgent(data) {
+      return data.keys().hasAll(['id', 'name', 'symbol', 'creator', 'usageFeeEth', 'createdAt'])
+        && data.id is string && data.id.size() >= 1 && data.id.size() <= 64
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.symbol is string && data.symbol.size() >= 1 && data.symbol.size() <= 10
+        && data.creator is string && data.creator.size() >= 10 && data.creator.size() <= 64
+        && data.usageFeeEth is number && data.usageFeeEth >= 0
+        && data.createdAt is number;
+    }
+
+    function isValidStakingPool(data) {
+      return data.keys().hasAll(['id', 'tokenName', 'tokenSymbol', 'tokenAddress', 'apr', 'tvlEth'])
+        && data.id is string && data.id.size() >= 1 && data.id.size() <= 64
+        && data.tokenName is string && data.tokenName.size() >= 1 && data.tokenName.size() <= 100
+        && data.tokenSymbol is string && data.tokenSymbol.size() >= 1 && data.tokenSymbol.size() <= 10
+        && data.tokenAddress is string
+        && data.apr is number && data.apr >= 0
+        && data.tvlEth is number && data.tvlEth >= 0;
+    }
+
+    function isValidActivity(data) {
+      return data.keys().hasAll(['id', 'type', 'user', 'timestamp', 'details'])
+        && data.id is string && data.id.size() >= 1 && data.id.size() <= 64
+        && data.type is string && data.type.size() >= 1 && data.type.size() <= 30
+        && data.user is string && data.user.size() >= 10 && data.user.size() <= 64
+        && data.timestamp is number
+        && data.details is string;
+    }
+
+    function isValidReferralRecord(data) {
+      return data.keys().hasAll(['code', 'ownerAddress', 'totalReferredCount', 'totalFeesGeneratedEth', 'unclaimedRewardsAgl', 'claimedRewardsAgl'])
+        && data.code is string && data.code.size() >= 1 && data.code.size() <= 64
+        && data.ownerAddress is string && data.ownerAddress.size() >= 10 && data.ownerAddress.size() <= 64
+        && data.totalReferredCount is number && data.totalReferredCount >= 0
+        && data.totalFeesGeneratedEth is number && data.totalFeesGeneratedEth >= 0
+        && data.unclaimedRewardsAgl is number && data.unclaimedRewardsAgl >= 0
+        && data.claimedRewardsAgl is number && data.claimedRewardsAgl >= 0;
+    }
+
+    // 4. Secure Collections Match Blocks
+    
+    // TOKENS COLLECTION
+    match /tokens/{address} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(address) && isValidToken(incoming());
+      allow update: if isSignedIn() && isValidToken(incoming()) && (
+        isAdmin() ||
+        // Only allow updating critical bonding curve state like currentPrice, supply, marketCap, reserveEth, volume24h
+        incoming().diff(existing()).affectedKeys().hasOnly(['currentPrice', 'supply', 'marketCap', 'reserveEth', 'volume24h', 'creatorFeesEarned'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // NFTS COLLECTION
+    match /nfts/{contractAddress} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(contractAddress) && isValidNFTCollection(incoming());
+      allow update: if isSignedIn() && isValidNFTCollection(incoming()) && (
+        isAdmin() ||
+        incoming().diff(existing()).affectedKeys().hasOnly(['currentSupply', 'items'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // DAOS COLLECTION
+    match /daos/{contractAddress} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(contractAddress) && isValidDAO(incoming());
+      allow update: if isSignedIn() && isValidDAO(incoming()) && (
+        isAdmin() ||
+        incoming().diff(existing()).affectedKeys().hasOnly(['treasuryBalanceEth', 'memberCount', 'proposals'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // GAMEFI COLLECTION
+    match /gamefi/{contractAddress} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(contractAddress) && isValidGameFiProject(incoming());
+      allow update: if isSignedIn() && isValidGameFiProject(incoming()) && (
+        isAdmin() ||
+        incoming().diff(existing()).affectedKeys().hasOnly(['prizePoolEth', 'activeSeasons', 'missions', 'achievements', 'leaderboard', 'battlePass'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // AI AGENTS COLLECTION
+    match /agents/{id} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(id) && isValidAIAgent(incoming());
+      allow update: if isSignedIn() && isValidAIAgent(incoming()) && (
+        isAdmin() ||
+        incoming().diff(existing()).affectedKeys().hasOnly(['usageFeeEth', 'lifetimeRevenueEth', 'queryCount', 'chatHistory'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // STAKING COLLECTION
+    match /staking/{id} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(id) && isValidStakingPool(incoming());
+      allow update: if isSignedIn() && isValidStakingPool(incoming()) && (
+        isAdmin() ||
+        incoming().diff(existing()).affectedKeys().hasOnly(['tvlEth', 'stakedBalance', 'earnedRewards'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ACTIVITIES COLLECTION
+    match /activities/{id} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(id) && isValidActivity(incoming());
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // REFERRALS COLLECTION
+    match /referrals/{ownerAddress} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(ownerAddress) && isValidReferralRecord(incoming());
+      allow update: if isSignedIn() && isValidReferralRecord(incoming()) && (
+        isAdmin() ||
+        // A user or referrer system can only mutate counters or reward payouts
+        incoming().diff(existing()).affectedKeys().hasOnly(['totalReferredCount', 'totalFeesGeneratedEth', 'unclaimedRewardsAgl', 'claimedRewardsAgl'])
+      );
+      allow delete: if isAdmin();
+    }
+  }
+}

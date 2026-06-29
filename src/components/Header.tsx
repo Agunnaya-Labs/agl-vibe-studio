@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Wallet, Coins, RefreshCw, Layers, Database, Search, X, Bot, Palette } from "lucide-react";
+import { Wallet, Coins, RefreshCw, Layers, Database, Search, X, Bot, Palette, Cloud, CloudOff } from "lucide-react";
 import { WalletState, Token, NFTCollection, AIAgent } from "../types";
 
 interface HeaderProps {
@@ -14,6 +14,9 @@ interface HeaderProps {
   agents: AIAgent[];
   onSelectToken: (token: Token) => void;
   onSelectTab: (tab: string) => void;
+  firebaseUser?: any;
+  onSignInWithGoogle?: () => void;
+  onSignOut?: () => void;
 }
 
 export default function Header({ 
@@ -27,7 +30,10 @@ export default function Header({
   nfts = [],
   agents = [],
   onSelectToken,
-  onSelectTab
+  onSelectTab,
+  firebaseUser = null,
+  onSignInWithGoogle,
+  onSignOut
 }: HeaderProps) {
   const shortAddress = wallet.isConnected && wallet.address
     ? `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`
@@ -325,6 +331,45 @@ export default function Header({
               <span className="text-white font-bold">{wallet.balanceEth.toFixed(4)}</span>
             </div>
           </>
+        )}
+
+        {/* Google Cloud Sync Widget */}
+        {firebaseUser ? (
+          <div className="flex items-center gap-1.5 bg-black/50 border border-emerald-500/30 rounded-xl p-1 font-mono text-xs shadow-[0_0_15px_rgba(16,185,129,0.05)]">
+            <div className="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]"></span>
+              <Cloud className="w-3.5 h-3.5" />
+              <span className="text-[10px] hidden lg:inline">Cloud Sync Active</span>
+            </div>
+            {firebaseUser.photoURL ? (
+              <img 
+                src={firebaseUser.photoURL} 
+                alt={firebaseUser.displayName || "Google User"} 
+                className="w-5 h-5 rounded-full border border-white/10"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-5 h-5 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center font-bold text-[9px] text-zinc-400">
+                G
+              </div>
+            )}
+            <button
+              onClick={onSignOut}
+              className="px-2 py-1 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-red-400 transition-all text-[10px]"
+              title="Sign out of Google Cloud Backup"
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={onSignInWithGoogle}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-950 hover:bg-zinc-900 text-zinc-300 hover:text-white border border-white/10 rounded-lg text-xs font-mono font-medium transition-all"
+            title="Authenticate with Google to persist and share your creations in the cloud"
+          >
+            <CloudOff className="w-3.5 h-3.5 text-zinc-500" />
+            <span>Cloud Backup</span>
+          </button>
         )}
 
         {/* Connection Widget */}

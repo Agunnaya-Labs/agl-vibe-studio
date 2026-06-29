@@ -1,0 +1,188 @@
+{
+  "entities": {
+    "Token": {
+      "title": "Token",
+      "description": "Information about a bonding curve token",
+      "type": "object",
+      "properties": {
+        "address": { "type": "string" },
+        "name": { "type": "string" },
+        "symbol": { "type": "string" },
+        "description": { "type": "string" },
+        "creator": { "type": "string" },
+        "creatorFeesEarned": { "type": "number" },
+        "currentPrice": { "type": "number" },
+        "supply": { "type": "number" },
+        "maxSupply": { "type": "number" },
+        "marketCap": { "type": "number" },
+        "reserveEth": { "type": "number" },
+        "volume24h": { "type": "number" },
+        "category": { "type": "string", "enum": ["meme", "defi", "ai", "utility", "gamefi"] },
+        "logoUrl": { "type": "string" },
+        "isVerified": { "type": "boolean" },
+        "vestingWeeks": { "type": "number" },
+        "referralRewardsPct": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["address", "name", "symbol", "creator", "currentPrice", "supply", "createdAt"]
+    },
+    "NFTCollection": {
+      "title": "NFTCollection",
+      "description": "Details about an NFT collection on Base",
+      "type": "object",
+      "properties": {
+        "contractAddress": { "type": "string" },
+        "name": { "type": "string" },
+        "symbol": { "type": "string" },
+        "description": { "type": "string" },
+        "creator": { "type": "string" },
+        "mintPrice": { "type": "number" },
+        "currentSupply": { "type": "number" },
+        "maxSupply": { "type": "number" },
+        "royaltyFee": { "type": "number" },
+        "isRevealed": { "type": "boolean" },
+        "isVerified": { "type": "boolean" },
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["contractAddress", "name", "symbol", "creator", "mintPrice", "currentSupply", "maxSupply", "createdAt"]
+    },
+    "DAO": {
+      "title": "DAO",
+      "description": "A decentralized autonomous organization",
+      "type": "object",
+      "properties": {
+        "contractAddress": { "type": "string" },
+        "name": { "type": "string" },
+        "symbol": { "type": "string" },
+        "description": { "type": "string" },
+        "creator": { "type": "string" },
+        "governanceTokenAddress": { "type": "string" },
+        "treasuryBalanceEth": { "type": "number" },
+        "memberCount": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["contractAddress", "name", "symbol", "creator", "governanceTokenAddress", "treasuryBalanceEth", "memberCount", "createdAt"]
+    },
+    "GameFiProject": {
+      "title": "GameFiProject",
+      "description": "An interactive Web3 gaming and developer achievement system",
+      "type": "object",
+      "properties": {
+        "contractAddress": { "type": "string" },
+        "name": { "type": "string" },
+        "symbol": { "type": "string" },
+        "description": { "type": "string" },
+        "creator": { "type": "string" },
+        "prizePoolEth": { "type": "number" },
+        "activeSeasons": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["contractAddress", "name", "symbol", "creator", "prizePoolEth", "createdAt"]
+    },
+    "AIAgent": {
+      "title": "AIAgent",
+      "description": "An autonomous intelligent agent offering core logic on Base",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "symbol": { "type": "string" },
+        "description": { "type": "string" },
+        "contractAddress": { "type": "string" },
+        "creator": { "type": "string" },
+        "tokenPrice": { "type": "number" },
+        "usageFeeEth": { "type": "number" },
+        "lifetimeRevenueEth": { "type": "number" },
+        "queryCount": { "type": "number" },
+        "systemPrompt": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "aglRewardDiscounts": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "name", "symbol", "creator", "usageFeeEth", "createdAt"]
+    },
+    "StakingPool": {
+      "title": "StakingPool",
+      "description": "Details of staking pool yields",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tokenName": { "type": "string" },
+        "tokenSymbol": { "type": "string" },
+        "tokenAddress": { "type": "string" },
+        "apr": { "type": "number" },
+        "tvlEth": { "type": "number" },
+        "stakedBalance": { "type": "number" },
+        "earnedRewards": { "type": "number" },
+        "lockPeriodDays": { "type": "number" }
+      },
+      "required": ["id", "tokenName", "tokenSymbol", "tokenAddress", "apr", "tvlEth"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "A ledger tracking active system events",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "tokenSymbol": { "type": "string" },
+        "tokenAddress": { "type": "string" },
+        "user": { "type": "string" },
+        "amount": { "type": "number" },
+        "ethValue": { "type": "number" },
+        "timestamp": { "type": "number" },
+        "details": { "type": "string" }
+      },
+      "required": ["id", "type", "user", "timestamp", "details"]
+    },
+    "ReferralRecord": {
+      "title": "ReferralRecord",
+      "description": "Affiliate data linking referrers with fee calculations",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "ownerAddress": { "type": "string" },
+        "totalReferredCount": { "type": "number" },
+        "totalFeesGeneratedEth": { "type": "number" },
+        "unclaimedRewardsAgl": { "type": "number" },
+        "claimedRewardsAgl": { "type": "number" }
+      },
+      "required": ["code", "ownerAddress", "totalReferredCount", "totalFeesGeneratedEth", "unclaimedRewardsAgl", "claimedRewardsAgl"]
+    }
+  },
+  "firestore": {
+    "/tokens/{address}": {
+      "schema": { "$ref": "#/entities/Token" },
+      "description": "Database-backed registry for dynamic bonding curve tokens"
+    },
+    "/nfts/{contractAddress}": {
+      "schema": { "$ref": "#/entities/NFTCollection" },
+      "description": "Registry of on-chain minted non-fungible collections"
+    },
+    "/daos/{contractAddress}": {
+      "schema": { "$ref": "#/entities/DAO" },
+      "description": "Guilds and DAOs with proposals on-chain"
+    },
+    "/gamefi/{contractAddress}": {
+      "schema": { "$ref": "#/entities/GameFiProject" },
+      "description": "GameFi profiles detailing developer battles and quests"
+    },
+    "/agents/{id}": {
+      "schema": { "$ref": "#/entities/AIAgent" },
+      "description": "Registry for AI Agent engines"
+    },
+    "/staking/{id}": {
+      "schema": { "$ref": "#/entities/StakingPool" },
+      "description": "Active staking positions and TVL tracking"
+    },
+    "/activities/{id}": {
+      "schema": { "$ref": "#/entities/Activity" },
+      "description": "Unified transaction ledger of actions taken inside the app"
+    },
+    "/referrals/{ownerAddress}": {
+      "schema": { "$ref": "#/entities/ReferralRecord" },
+      "description": "Active affiliate invite links"
+    }
+  }
+}

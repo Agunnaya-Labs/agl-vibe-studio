@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { HelmetProvider, Helmet } from "react-helmet-async";
+import { User, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
+import { auth } from "./lib/firebase";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import WalletModal from "./components/WalletModal";
@@ -35,6 +37,10 @@ export default function App() {
   // Modals state
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isAIDrawerOpen, setIsAIDrawerOpen] = useState(false);
+
+  // Firebase Auth state
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   // Global State data
   const [wallet, setWallet] = useState<WalletState>(AgunnayaDatabase.getWallet());
@@ -82,6 +88,25 @@ export default function App() {
   useEffect(() => {
     refreshAllData();
 
+    // 1. Listen to Firebase auth changes
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setFirebaseUser(user);
+      setIsAuthLoading(false);
+      if (user) {
+        addTerminalLog("success", `FIREBASE AUTH: Logged in as ${user.displayName || user.email}`);
+      } else {
+        addTerminalLog("info", "FIREBASE AUTH: Cloud synchronization passive. Connect Google Account to enable shared state.");
+      }
+    });
+
+    // 2. Perform initial community sync from Firestore
+    AgunnayaDatabase.syncAllFromFirestore().then((success) => {
+      if (success) {
+        addTerminalLog("success", "CLOUD SYNC: Community database updated from Firestore!");
+        refreshAllData();
+      }
+    });
+
     // Check for referral code in URL search params
     const params = new URLSearchParams(window.location.search);
     const refCode = params.get("ref");
@@ -100,7 +125,33 @@ export default function App() {
         }
       }
     }
+
+    return () => unsubscribe();
   }, []);
+
+  const handleSignInWithGoogle = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      showToast(`Welcome, ${result.user.displayName}! Cloud Sync active.`, "success");
+      // Re-sync on log in
+      await AgunnayaDatabase.syncAllFromFirestore();
+      refreshAllData();
+    } catch (error) {
+      showToast("Google Sign-In failed.", "error");
+      addTerminalLog("error", `AUTH_ERROR: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      showToast("Signed out of Google account.", "info");
+      refreshAllData();
+    } catch (error) {
+      showToast("Google Sign-Out failed.", "error");
+    }
+  };
 
   const handleFundWallet = () => {
     if (!wallet.isConnected) {
@@ -489,6 +540,9 @@ export default function App() {
               setSelectedToken(null);
               setCurrentTab(tab);
             }}
+            firebaseUser={firebaseUser}
+            onSignInWithGoogle={handleSignInWithGoogle}
+            onSignOut={handleSignOut}
           />
 
           {/* Viewport contents scroll area */}

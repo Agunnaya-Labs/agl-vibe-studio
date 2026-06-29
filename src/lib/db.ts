@@ -1,4 +1,6 @@
 import { Token, NFTCollection, DAO, GameFiProject, AIAgent, WalletState, Activity, StakingPool, ReferralRecord, ReferralPayout } from "../types";
+import { doc, setDoc, getDocs, collection } from "firebase/firestore";
+import { db, handleFirestoreError, OperationType, auth } from "./firebase";
 
 // EXACT BONDING CURVE MATH
 export const BASE_PRICE = 0.000001; // 1e-6 ETH per token
@@ -291,6 +293,177 @@ const DEFAULT_WALLET: WalletState = {
 
 // PERSISTENCE WRAPPER
 export class AgunnayaDatabase {
+  static async saveToFirestore(collectionName: string, docId: string, data: any) {
+    if (!auth.currentUser) {
+      // Passive local-only mode when not signed in with Google
+      return;
+    }
+    try {
+      await setDoc(doc(db, collectionName, docId), data);
+    } catch (err) {
+      console.warn(`Firestore save to ${collectionName}/${docId} failed:`, err);
+      // Fail-fast context helper if authorized
+      try {
+        handleFirestoreError(err, OperationType.WRITE, `${collectionName}/${docId}`);
+      } catch (e) {
+        console.error("Firestore rule validation error details: ", e);
+      }
+    }
+  }
+
+  static async syncAllFromFirestore() {
+    try {
+      // 1. Sync Tokens
+      const tokenSnap = await getDocs(collection(db, "tokens"));
+      if (!tokenSnap.empty) {
+        const firestoreTokens: Token[] = [];
+        tokenSnap.forEach(doc => firestoreTokens.push(doc.data() as Token));
+        const localTokens = this.getTokens();
+        const merged = [...localTokens];
+        firestoreTokens.forEach(ft => {
+          const idx = merged.findIndex(t => t.address.toLowerCase() === ft.address.toLowerCase());
+          if (idx !== -1) {
+            merged[idx] = ft;
+          } else {
+            merged.push(ft);
+          }
+        });
+        localStorage.setItem("agl_tokens", JSON.stringify(merged));
+      }
+
+      // 2. Sync NFTs
+      const nftsSnap = await getDocs(collection(db, "nfts"));
+      if (!nftsSnap.empty) {
+        const firestoreNFTs: NFTCollection[] = [];
+        nftsSnap.forEach(doc => firestoreNFTs.push(doc.data() as NFTCollection));
+        const localNFTs = this.getNFTs();
+        const merged = [...localNFTs];
+        firestoreNFTs.forEach(fn => {
+          const idx = merged.findIndex(n => n.contractAddress.toLowerCase() === fn.contractAddress.toLowerCase());
+          if (idx !== -1) {
+            merged[idx] = fn;
+          } else {
+            merged.push(fn);
+          }
+        });
+        localStorage.setItem("agl_nfts", JSON.stringify(merged));
+      }
+
+      // 3. Sync DAOs
+      const daosSnap = await getDocs(collection(db, "daos"));
+      if (!daosSnap.empty) {
+        const firestoreDAOs: DAO[] = [];
+        daosSnap.forEach(doc => firestoreDAOs.push(doc.data() as DAO));
+        const localDAOs = this.getDAOs();
+        const merged = [...localDAOs];
+        firestoreDAOs.forEach(fd => {
+          const idx = merged.findIndex(d => d.contractAddress.toLowerCase() === fd.contractAddress.toLowerCase());
+          if (idx !== -1) {
+            merged[idx] = fd;
+          } else {
+            merged.push(fd);
+          }
+        });
+        localStorage.setItem("agl_daos", JSON.stringify(merged));
+      }
+
+      // 4. Sync GameFi
+      const gamefiSnap = await getDocs(collection(db, "gamefi"));
+      if (!gamefiSnap.empty) {
+        const firestoreGamefi: GameFiProject[] = [];
+        gamefiSnap.forEach(doc => firestoreGamefi.push(doc.data() as GameFiProject));
+        const localGamefi = this.getGameFi();
+        const merged = [...localGamefi];
+        firestoreGamefi.forEach(fg => {
+          const idx = merged.findIndex(g => g.contractAddress.toLowerCase() === fg.contractAddress.toLowerCase());
+          if (idx !== -1) {
+            merged[idx] = fg;
+          } else {
+            merged.push(fg);
+          }
+        });
+        localStorage.setItem("agl_gamefi", JSON.stringify(merged));
+      }
+
+      // 5. Sync Agents
+      const agentsSnap = await getDocs(collection(db, "agents"));
+      if (!agentsSnap.empty) {
+        const firestoreAgents: AIAgent[] = [];
+        agentsSnap.forEach(doc => firestoreAgents.push(doc.data() as AIAgent));
+        const localAgents = this.getAgents();
+        const merged = [...localAgents];
+        firestoreAgents.forEach(fa => {
+          const idx = merged.findIndex(a => a.id.toLowerCase() === fa.id.toLowerCase());
+          if (idx !== -1) {
+            merged[idx] = fa;
+          } else {
+            merged.push(fa);
+          }
+        });
+        localStorage.setItem("agl_agents", JSON.stringify(merged));
+      }
+
+      // 6. Sync Staking
+      const stakingSnap = await getDocs(collection(db, "staking"));
+      if (!stakingSnap.empty) {
+        const firestoreStaking: StakingPool[] = [];
+        stakingSnap.forEach(doc => firestoreStaking.push(doc.data() as StakingPool));
+        const localStaking = this.getStaking();
+        const merged = [...localStaking];
+        firestoreStaking.forEach(fs => {
+          const idx = merged.findIndex(s => s.id.toLowerCase() === fs.id.toLowerCase());
+          if (idx !== -1) {
+            merged[idx] = fs;
+          } else {
+            merged.push(fs);
+          }
+        });
+        localStorage.setItem("agl_staking", JSON.stringify(merged));
+      }
+
+      // 7. Sync Activities
+      const actSnap = await getDocs(collection(db, "activities"));
+      if (!actSnap.empty) {
+        const firestoreAct: Activity[] = [];
+        actSnap.forEach(doc => firestoreAct.push(doc.data() as Activity));
+        const localAct = this.getActivities();
+        const merged = [...localAct];
+        firestoreAct.forEach(fa => {
+          const idx = merged.findIndex(a => a.id.toLowerCase() === fa.id.toLowerCase());
+          if (idx !== -1) {
+            merged[idx] = fa;
+          } else {
+            merged.push(fa);
+          }
+        });
+        localStorage.setItem("agl_activities", JSON.stringify(merged));
+      }
+
+      // 8. Sync Referrals
+      const refSnap = await getDocs(collection(db, "referrals"));
+      if (!refSnap.empty) {
+        const firestoreRef: ReferralRecord[] = [];
+        refSnap.forEach(doc => firestoreRef.push(doc.data() as ReferralRecord));
+        const localRef = this.getReferralRecords();
+        const merged = [...localRef];
+        firestoreRef.forEach(fr => {
+          const idx = merged.findIndex(r => r.ownerAddress.toLowerCase() === fr.ownerAddress.toLowerCase());
+          if (idx !== -1) {
+            merged[idx] = fr;
+          } else {
+            merged.push(fr);
+          }
+        });
+        localStorage.setItem("agl_referral_records", JSON.stringify(merged));
+      }
+
+      return true;
+    } catch (err) {
+      console.error("Firestore initial sync failed:", err);
+      return false;
+    }
+  }
+
   static getTokens(): Token[] {
     const data = localStorage.getItem("agl_tokens");
     if (!data) {
@@ -302,6 +475,9 @@ export class AgunnayaDatabase {
 
   static saveTokens(tokens: Token[]) {
     localStorage.setItem("agl_tokens", JSON.stringify(tokens));
+    tokens.forEach(t => {
+      this.saveToFirestore("tokens", t.address, t);
+    });
   }
 
   static getNFTs(): NFTCollection[] {
@@ -315,6 +491,9 @@ export class AgunnayaDatabase {
 
   static saveNFTs(nfts: NFTCollection[]) {
     localStorage.setItem("agl_nfts", JSON.stringify(nfts));
+    nfts.forEach(n => {
+      this.saveToFirestore("nfts", n.contractAddress, n);
+    });
   }
 
   static getDAOs(): DAO[] {
@@ -328,6 +507,9 @@ export class AgunnayaDatabase {
 
   static saveDAOs(daos: DAO[]) {
     localStorage.setItem("agl_daos", JSON.stringify(daos));
+    daos.forEach(d => {
+      this.saveToFirestore("daos", d.contractAddress, d);
+    });
   }
 
   static getGameFi(): GameFiProject[] {
@@ -341,6 +523,9 @@ export class AgunnayaDatabase {
 
   static saveGameFi(gamefi: GameFiProject[]) {
     localStorage.setItem("agl_gamefi", JSON.stringify(gamefi));
+    gamefi.forEach(g => {
+      this.saveToFirestore("gamefi", g.contractAddress, g);
+    });
   }
 
   static getAgents(): AIAgent[] {
@@ -354,6 +539,9 @@ export class AgunnayaDatabase {
 
   static saveAgents(agents: AIAgent[]) {
     localStorage.setItem("agl_agents", JSON.stringify(agents));
+    agents.forEach(a => {
+      this.saveToFirestore("agents", a.id, a);
+    });
   }
 
   static getStaking(): StakingPool[] {
@@ -367,6 +555,9 @@ export class AgunnayaDatabase {
 
   static saveStaking(pools: StakingPool[]) {
     localStorage.setItem("agl_staking", JSON.stringify(pools));
+    pools.forEach(p => {
+      this.saveToFirestore("staking", p.id, p);
+    });
   }
 
   static getWallet(): WalletState {
@@ -393,6 +584,9 @@ export class AgunnayaDatabase {
 
   static saveActivities(activities: Activity[]) {
     localStorage.setItem("agl_activities", JSON.stringify(activities));
+    activities.forEach(a => {
+      this.saveToFirestore("activities", a.id, a);
+    });
   }
 
   static addActivity(activity: Omit<Activity, "id" | "timestamp">) {
@@ -425,6 +619,9 @@ export class AgunnayaDatabase {
 
   static saveReferralRecords(records: ReferralRecord[]) {
     localStorage.setItem("agl_referral_records", JSON.stringify(records));
+    records.forEach(r => {
+      this.saveToFirestore("referrals", r.ownerAddress, r);
+    });
   }
 
   static getReferralRecord(address: string): ReferralRecord {
