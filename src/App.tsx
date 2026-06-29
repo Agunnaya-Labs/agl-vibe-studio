@@ -23,6 +23,11 @@ import PortfolioAnalyticsPage from "./pages/PortfolioAnalyticsPage";
 import BondingCurveAnalyticsPage from "./pages/BondingCurveAnalyticsPage";
 import RevenueAnalyticsPage from "./pages/RevenueAnalyticsPage";
 import LeaderboardsPage from "./pages/LeaderboardsPage";
+import PortfolioManagerPage from "./pages/PortfolioManagerPage";
+import AgentMarketplacePage from "./pages/AgentMarketplacePage";
+import SmartContractAuditorPage from "./pages/SmartContractAuditorPage";
+import NFTMetadataGeneratorPage from "./pages/NFTMetadataGeneratorPage";
+import GovernanceEnhancerPage from "./pages/GovernanceEnhancerPage";
 import AdminPanelPage from "./pages/AdminPanelPage";
 import ReferralPage from "./pages/ReferralPage";
 import GoogleDrivePage from "./pages/GoogleDrivePage";
@@ -530,6 +535,42 @@ export default function App() {
             tokens={tokens}
             agents={agents}
             activities={activities}
+          />
+        );
+      case "portfolio-manager":
+        return (
+          <PortfolioManagerPage
+            userTokens={tokens}
+            userNFTs={nfts}
+            userAgents={agents}
+            walletBalance={wallet.balanceEth}
+            showToast={showToast}
+          />
+        );
+      case "agent-marketplace":
+        return (
+          <AgentMarketplacePage
+            userAgents={agents}
+            showToast={showToast}
+          />
+        );
+      case "smart-contract-auditor":
+        return (
+          <SmartContractAuditorPage
+            showToast={showToast}
+          />
+        );
+      case "nft-metadata-generator":
+        return (
+          <NFTMetadataGeneratorPage
+            showToast={showToast}
+          />
+        );
+      case "governance-enhancer":
+        return (
+          <GovernanceEnhancerPage
+            userDAOs={daos}
+            showToast={showToast}
           />
         );
       case "admin":
