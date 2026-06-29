@@ -38,10 +38,14 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="https://agunnaya-labs.studio/" />
     
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
     <!-- Favicons -->
     <link rel="icon" type="image/png" sizes="32x32" href="/images/brand/agunnaya-logo.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/images/brand/agunnaya-logo.png" />
     <link rel="apple-touch-icon" href="/images/brand/agunnaya-logo.png" />
+    <link rel="apple-touch-startup-image" href="/images/backgrounds/hero-gradient.png" />
     
     <!-- Preconnect to external resources for performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -56,6 +60,17 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(reg => console.log('Service Worker registered:', reg))
+            .catch(err => console.warn('Service Worker registration failed:', err));
+        });
+      }
+    </script>
   </body>
 </html>
 
