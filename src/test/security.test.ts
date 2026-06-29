@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validators, sanitizers, rateLimiter } from '@/lib/security';
+import { validators, sanitizers, rateLimiter } from '../lib/security';
 
 describe('Security Validators', () => {
   describe('isValidAddress', () => {
