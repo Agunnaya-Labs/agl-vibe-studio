@@ -98,7 +98,7 @@ export default function Header({
   const hasResults = filteredTokens.length > 0 || filteredNFTs.length > 0 || filteredAgents.length > 0;
 
   return (
-    <header id="app-header" className="sticky top-0 z-40 w-full h-16 border-b border-white/10 bg-[#050505]/50 backdrop-blur-md px-6 flex items-center justify-between shrink-0">
+    <header id="app-header" className="sticky top-0 z-40 w-full h-16 border-b border-white/10 bg-[#050505]/50 backdrop-blur-md px-6 flex items-center justify-between shrink-0" role="banner">
       {/* Search / Network info on desktop */}
       <div className="flex items-center gap-4">
         {/* Immersive UI Brand Title */}

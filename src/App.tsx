@@ -612,12 +612,12 @@ export default function App() {
           />
 
           {/* Viewport contents scroll area */}
-          <main className="flex-1 overflow-y-auto p-6 max-w-7xl w-full mx-auto pb-24">
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 max-w-7xl w-full mx-auto pb-24">
             {renderTabContent()}
           </main>
 
           {/* Bottom Activity Bar / Footer */}
-          <footer className="h-12 border-t border-white/5 bg-[#050505] flex items-center px-8 justify-between shrink-0 text-zinc-500 text-[10px] font-mono">
+          <footer className="h-12 border-t border-white/5 bg-[#050505] flex items-center px-4 md:px-8 justify-between shrink-0 text-zinc-500 text-[10px] font-mono overflow-x-auto">
             <div className="flex gap-8">
               <span>GAS: <span className="text-white">0.01 Gwei</span></span>
               <span>TXS: <span className="text-white">1.2k/min</span></span>
