@@ -84,10 +84,9 @@ export default function LandingPage({ onLaunchApp }: LandingPageProps) {
       <nav className="relative z-10 max-w-7xl mx-auto px-6 h-20 flex items-center justify-between border-b border-white/10">
         <div className="flex items-center gap-2">
           <img
-            src="/src/assets/images/agunnaya_logo_1782747905258.jpg"
-            alt="AL"
+            src="/images/brand/agunnaya-logo.png"
+            alt="Agunnaya Labs Logo"
             className="w-8 h-8 rounded-xl object-cover shadow-lg shadow-blue-500/20 border border-white/10"
-            referrerPolicy="no-referrer"
           />
           <span className="font-display font-bold text-xl tracking-tight">
             Agunnaya <span className="bg-gradient-to-r from-[#0052FF] to-[#A855F7] bg-clip-text text-transparent">Labs</span>
