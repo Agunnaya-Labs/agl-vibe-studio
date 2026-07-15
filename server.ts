@@ -91,7 +91,7 @@ Format the output strictly as JSON.`;
     
     const systemContext = { systemInstruction };
 
-    const text = response.text || "{}";
+    const text = response.response.text();
     res.json(JSON.parse(text));
   } catch (error: any) {
     console.error("AI Build Error:", error);
@@ -140,7 +140,8 @@ Roleplay as this specific AI Agent. Speak intelligently, with confidence, referr
       }
     });
 
-    res.json({ content: response.text || "Decompressing agent core response..." });
+    const content = response.response.text();
+    res.json({ content });
   } catch (error: any) {
     console.error("AI Agent Chat Error:", error);
     res.status(500).json({ error: error.message || "Autonomous agent system offline." });
@@ -204,7 +205,7 @@ User instruction/guideline for response: ${prompt}`
       }
     });
 
-    const text = response.text || "{}";
+    const text = response.response.text();
     res.json(JSON.parse(text));
   } catch (error: any) {
     console.error("AI Email Draft Error:", error);
