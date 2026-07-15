@@ -8,6 +8,42 @@ const PORT = parseInt(process.env.PORT || "5000", 10);
 
 app.use(express.json());
 
+// Security headers (replaces broken <meta> CSP tags in index.html)
+app.use((req, res, next) => {
+  const isDev = process.env.NODE_ENV !== "production";
+
+  // Allow Replit preview iframe in dev; lock down in production
+  const frameAncestors = isDev
+    ? "frame-ancestors 'self' https://*.replit.dev https://*.replit.app https://*.repl.co"
+    : "frame-ancestors 'none'";
+
+  // Allow Vite HMR WebSocket in dev
+  const connectSrc = isDev
+    ? "connect-src 'self' https: wss: ws:"
+    : "connect-src 'self' https:";
+
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "img-src 'self' data: https: blob:",
+    connectSrc,
+    frameAncestors,
+  ].join("; ");
+
+  res.setHeader("Content-Security-Policy", csp);
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+
+  if (!isDev) {
+    res.setHeader("X-Frame-Options", "DENY");
+  }
+
+  next();
+});
+
 // Lazy-loaded GoogleGenerativeAI client to avoid startup crashes if key is not defined yet
 let aiClient: GoogleGenerativeAI | null = null;
 
