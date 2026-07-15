@@ -52,17 +52,25 @@ export default function Sidebar({ currentTab, onSelectTab, isAdmin, onGoHome }: 
       <div>
         {/* Brand Logo & Tagline */}
         <div className="h-16 flex flex-col justify-center px-6 border-b border-white/10 bg-[#0a0a0a]/60">
-          <div className="flex items-center gap-2">
+          <button 
+            onClick={() => {
+              // Logo click can trigger animations or show stats modal
+              const event = new CustomEvent('logoClicked', { detail: { timestamp: Date.now() } });
+              window.dispatchEvent(event);
+            }}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity group cursor-pointer"
+            title="Click to view studio stats"
+          >
             <img
-              src="/src/assets/images/agunnaya_logo_1782747905258.jpg"
-              alt="AL"
-              className="w-8 h-8 rounded-lg object-cover shadow-lg shadow-blue-500/20 border border-white/10"
+              src="/assets/images/app-icon-interactive.png"
+              alt="Agunnaya Labs"
+              className="w-8 h-8 rounded-lg object-cover shadow-lg shadow-blue-500/20 border border-white/10 group-hover:shadow-purple-500/30 transition-all"
               referrerPolicy="no-referrer"
             />
-            <span className="font-display font-bold text-white text-base tracking-tight flex items-center gap-1.5">
-              Agunnaya <span className="text-[10px] bg-brand-purple/20 text-brand-purple px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Labs</span>
+            <span className="font-display font-bold text-white text-base tracking-tight flex items-center gap-1.5 group-hover:text-brand-blue transition-colors">
+              Agunnaya <span className="text-[10px] bg-brand-purple/20 text-brand-purple px-1.5 py-0.5 rounded font-bold uppercase tracking-wider group-hover:bg-brand-blue/20 group-hover:text-brand-blue transition-colors">Labs</span>
             </span>
-          </div>
+          </button>
           <span className="text-[9px] text-zinc-500 font-medium tracking-wide mt-1">Build & Launch on Base Mainnet</span>
         </div>
 

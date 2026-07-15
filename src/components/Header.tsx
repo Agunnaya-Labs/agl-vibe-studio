@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Wallet, Coins, RefreshCw, Layers, Database, Search, X, Bot, Palette, Cloud, CloudOff } from "lucide-react";
+import { Wallet, Coins, RefreshCw, Layers, Database, Search, X, Bot, Palette, Cloud, CloudOff, Zap } from "lucide-react";
 import { WalletState, Token, NFTCollection, AIAgent } from "../types";
 
 interface HeaderProps {
@@ -41,6 +41,7 @@ export default function Header({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [logoHovered, setLogoHovered] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on click outside
@@ -101,12 +102,24 @@ export default function Header({
     <header id="app-header" className="sticky top-0 z-40 w-full h-16 border-b border-white/10 bg-[#050505]/50 backdrop-blur-md px-6 flex items-center justify-between shrink-0">
       {/* Search / Network info on desktop */}
       <div className="flex items-center gap-4">
-        {/* Immersive UI Brand Title */}
-        <div className="hidden lg:flex items-center gap-3">
-          <h1 className="text-xs font-semibold tracking-wider text-white/80 uppercase">
+        {/* Immersive UI Brand Title with Interactive Logo */}
+        <div className="hidden lg:flex items-center gap-3 group cursor-pointer" 
+          onMouseEnter={() => setLogoHovered(true)}
+          onMouseLeave={() => setLogoHovered(false)}>
+          <div className="relative flex items-center gap-2">
+            <img 
+              src="/assets/images/logo-main.png" 
+              alt="Agunnaya Labs" 
+              className={`w-6 h-6 transition-all duration-300 ${logoHovered ? 'scale-110 drop-shadow-[0_0_8px_rgba(0,82,255,0.6)]' : 'scale-100'}`}
+            />
+            {logoHovered && (
+              <Zap className="absolute w-4 h-4 text-[#0052FF] animate-pulse" style={{animation: 'pulse 1s infinite'}} />
+            )}
+          </div>
+          <h1 className={`text-xs font-semibold tracking-wider transition-all duration-300 ${logoHovered ? 'text-white' : 'text-white/80'} uppercase`}>
             AGUNNAYA LABS STUDIO <span className="text-[#0052FF] font-bold">v2.4</span>
           </h1>
-          <div className="h-4 w-px bg-white/10"></div>
+          <div className={`h-4 w-px transition-all duration-300 ${logoHovered ? 'bg-[#0052FF]/60' : 'bg-white/10'}`}></div>
         </div>
 
         {/* Network Switcher */}

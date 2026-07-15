@@ -4,7 +4,9 @@ import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId); /* CRITICAL: The app will break without this line */
+export const db = (firebaseConfig as any).firestoreDatabaseId 
+  ? getFirestore(app, (firebaseConfig as any).firestoreDatabaseId)
+  : getFirestore(app); /* CRITICAL: The app will break without this line */
 export const auth = getAuth();
 
 // Mandated Error Handler
@@ -54,16 +56,3 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   console.error("Firestore Error: ", JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
-
-// Connection Validation
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, "test", "connection"));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("the client is offline")) {
-      console.error("Please check your Firebase configuration.");
-    }
-  }
-}
-
-testConnection();

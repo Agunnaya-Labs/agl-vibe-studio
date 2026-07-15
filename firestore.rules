@@ -205,5 +205,11 @@ service cloud.firestore {
       );
       allow delete: if isAdmin();
     }
+
+    // TEST COLLECTION
+    match /test/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }

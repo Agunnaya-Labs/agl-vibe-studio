@@ -40,7 +40,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
     setTimeout(() => {
       const generatedId = "agent_" + Math.random().toString(36).substr(2, 5);
       const generatedAddress = "0x" + Math.random().toString(16).substr(2, 40);
-      const mockAvatar = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=60";
+      const mockAvatar = "/assets/images/agent-avatar.png";
 
       const newAgent: AIAgent = {
         id: generatedId,
