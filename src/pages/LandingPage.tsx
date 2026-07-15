@@ -9,6 +9,7 @@ export default function LandingPage({ onLaunchApp }: LandingPageProps) {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [heroTitleHovered, setHeroTitleHovered] = useState(false);
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,9 +111,18 @@ export default function LandingPage({ onLaunchApp }: LandingPageProps) {
           <span>Next-Generation AI Web3 Creation Engine</span>
         </div>
         
-        <h1 className="text-4xl md:text-6xl font-display font-bold tracking-tight max-w-3xl mx-auto leading-none bg-gradient-to-b from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent">
-          Build. Launch. Scale.<br />
-          <span className="bg-gradient-to-r from-[#0052FF] to-[#A855F7] bg-clip-text">On Base Mainnet.</span>
+        <h1 
+          className="text-4xl md:text-6xl font-display font-bold tracking-tight max-w-3xl mx-auto leading-none transition-all duration-500 cursor-pointer group"
+          onMouseEnter={() => setHeroTitleHovered(true)}
+          onMouseLeave={() => setHeroTitleHovered(false)}
+        >
+          <span className={`inline-block bg-gradient-to-b from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent transition-all duration-300 ${heroTitleHovered ? 'scale-110' : 'scale-100'}`}>
+            Build. Launch. Scale.
+          </span>
+          <br />
+          <span className={`inline-block bg-gradient-to-r from-[#0052FF] to-[#A855F7] bg-clip-text text-transparent transition-all duration-300 ${heroTitleHovered ? 'drop-shadow-[0_0_20px_rgba(139,92,246,0.6)]' : ''}`}>
+            On Base Mainnet.
+          </span>
         </h1>
 
         <p className="text-zinc-400 text-sm md:text-base max-w-xl mx-auto leading-relaxed">
