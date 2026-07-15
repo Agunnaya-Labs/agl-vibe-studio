@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Wallet, Coins, RefreshCw, Layers, Database, Search, X, Bot, Palette, Cloud, CloudOff, Zap } from "lucide-react";
 import { WalletState, Token, NFTCollection, AIAgent } from "../types";
+import CreditsWidget from "./CreditsWidget";
 
 interface HeaderProps {
   wallet: WalletState;
@@ -343,6 +344,9 @@ export default function Header({
               <span className="text-zinc-400">ETH:</span>
               <span className="text-white font-bold">{wallet.balanceEth.toFixed(4)}</span>
             </div>
+
+            {/* AGL Credits widget — reads live from Base Mainnet */}
+            <CreditsWidget walletAddress={wallet.address} />
           </>
         )}
 

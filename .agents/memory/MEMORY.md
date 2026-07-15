@@ -1,0 +1,1 @@
+- [AGLCredits contract integration](agl-credits.md) — contract at 0x13866F31c60822Ff70684213b9727915Ddf2c183 on Base Mainnet, AGL token at 0xEA1221B4d80A89BD8C75248Fae7c176BD1854698, rate 1000 credits/AGL.

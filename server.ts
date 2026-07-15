@@ -2,9 +2,85 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { ethers } from "ethers";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "5000", 10);
+
+// ─── AGLCredits on-chain integration ────────────────────────────────────────
+const AGL_CREDITS_ADDRESS = "0x13866F31c60822Ff70684213b9727915Ddf2c183";
+const BASE_RPC = "https://base.publicnode.com";
+
+const AGL_CREDITS_ABI = [
+  "function totalCreditsPurchased(address) view returns (uint256)",
+  "function totalAGLBurnedBy(address) view returns (uint256)",
+  "function creditsPerAGL() view returns (uint256)",
+  "function totalAGLBurned() view returns (uint256)",
+  "function aglToken() view returns (address)",
+  "function previewCredits(uint256) view returns (uint256)",
+];
+
+function getCreditsContract() {
+  const provider = new ethers.JsonRpcProvider(BASE_RPC);
+  return new ethers.Contract(AGL_CREDITS_ADDRESS, AGL_CREDITS_ABI, provider);
+}
+
+/** Credits deducted per AI call type (matches client-side CREDIT_COSTS in credits.ts) */
+const CREDIT_COSTS: Record<string, number> = {
+  build: 50,
+  "agent-chat": 5,
+  "draft-email": 10,
+};
+
+/**
+ * Per-session spend ledger. Keys are lowercase wallet addresses.
+ * Resets on server restart — upgrade path: persist to Firestore with firebase-admin.
+ */
+const spendLedger = new Map<string, number>();
+
+/**
+ * Middleware: reads on-chain totalCreditsPurchased for the calling wallet and
+ * enforces the credit cost. Wallets with 0 on-chain credits (sandbox users) pass
+ * through freely. Only wallets that have real credits but have spent them all are
+ * blocked with a 402.
+ */
+async function checkAndDeductCredits(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  const endpoint = req.path.replace("/api/ai/", "");
+  const cost = CREDIT_COSTS[endpoint] ?? 0;
+  const rawAddress: string = (req.body?.walletAddress || "").trim();
+  const key = rawAddress.toLowerCase();
+
+  if (!key || cost === 0) return next();
+
+  try {
+    const contract = getCreditsContract();
+    const totalPurchased = Number(await contract.totalCreditsPurchased(rawAddress));
+    const spent = spendLedger.get(key) || 0;
+    const remaining = totalPurchased - spent;
+
+    if (totalPurchased > 0 && remaining < cost) {
+      return res.status(402).json({
+        error: `Insufficient AGL credits. This action costs ${cost} credits but you only have ${remaining} remaining. Burn more AGL on the Credits panel to top up.`,
+        creditsNeeded: cost,
+        creditsRemaining: remaining,
+      });
+    }
+
+    // Deduct only for wallets that have real on-chain credits
+    if (totalPurchased > 0) {
+      spendLedger.set(key, spent + cost);
+    }
+  } catch {
+    // RPC failure — don't block the user; log and continue
+    console.warn("[Credits] Chain read failed — allowing call without credit check.");
+  }
+
+  next();
+}
 
 app.use(express.json());
 
@@ -58,8 +134,57 @@ function getAIClient(): GoogleGenerativeAI {
   return aiClient;
 }
 
+// ─── Credits API endpoints ───────────────────────────────────────────────────
+
+// Live on-chain balance + session spend for a wallet address
+app.get("/api/credits/balance/:address", async (req, res) => {
+  try {
+    const { address } = req.params;
+    const contract = getCreditsContract();
+
+    const [totalPurchased, totalAGLBurnedBy, creditsPerAGL, totalAGLBurned, aglTokenAddress] =
+      await Promise.all([
+        contract.totalCreditsPurchased(address),
+        contract.totalAGLBurnedBy(address),
+        contract.creditsPerAGL(),
+        contract.totalAGLBurned(),
+        contract.aglToken(),
+      ]);
+
+    const totalPurchasedNum = Number(totalPurchased);
+    const spent = spendLedger.get(address.toLowerCase()) || 0;
+
+    res.json({
+      totalCreditsPurchased: totalPurchasedNum,
+      creditsSpent: spent,
+      creditsRemaining: Math.max(0, totalPurchasedNum - spent),
+      totalAGLBurnedBy: ethers.formatUnits(totalAGLBurnedBy, 18),
+      creditsPerAGL: Number(creditsPerAGL),
+      totalProtocolAGLBurned: ethers.formatUnits(totalAGLBurned, 18),
+      aglTokenAddress,
+      costs: CREDIT_COSTS,
+    });
+  } catch (error: any) {
+    console.error("[Credits] Balance error:", error);
+    res.status(500).json({ error: "Failed to read credits from Base network." });
+  }
+});
+
+// Preview how many credits a given AGL wei amount would grant
+app.get("/api/credits/preview/:aglWei", async (req, res) => {
+  try {
+    const contract = getCreditsContract();
+    const credits = await contract.previewCredits(BigInt(req.params.aglWei));
+    res.json({ credits: Number(credits) });
+  } catch (error: any) {
+    res.status(500).json({ error: "Preview failed." });
+  }
+});
+
+// ─── AI endpoints (credit-gated) ─────────────────────────────────────────────
+
 // AI Builder endpoint
-app.post("/api/ai/build", async (req, res) => {
+app.post("/api/ai/build", checkAndDeductCredits, async (req, res) => {
   try {
     const { prompt, type } = req.body;
     if (!prompt) {
@@ -136,7 +261,7 @@ Format the output strictly as JSON.`;
 });
 
 // AI Agent Chat proxy endpoint
-app.post("/api/ai/agent-chat", async (req, res) => {
+app.post("/api/ai/agent-chat", checkAndDeductCredits, async (req, res) => {
   try {
     const { messages, agentProfile } = req.body;
     if (!messages || !Array.isArray(messages)) {
@@ -185,7 +310,7 @@ Roleplay as this specific AI Agent. Speak intelligently, with confidence, referr
 });
 
 // AI Gmail Assistant / Drafting Endpoint
-app.post("/api/ai/draft-email", async (req, res) => {
+app.post("/api/ai/draft-email", checkAndDeductCredits, async (req, res) => {
   try {
     const { prompt, originalEmail, agentProfile } = req.body;
     if (!prompt) {

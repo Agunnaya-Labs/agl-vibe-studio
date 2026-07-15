@@ -109,7 +109,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
     try {
       const allMessages = [...chatMessages, { role: "user", content: userText }];
       
-      const response = await chatWithAgentAI(allMessages, activeChatAgent);
+      const response = await chatWithAgentAI(allMessages, activeChatAgent, wallet.address);
       setChatMessages(prev => [...prev, { role: "assistant", content: response }]);
 
       // Mutate agent stats (increase query count & lifetime revenue)
