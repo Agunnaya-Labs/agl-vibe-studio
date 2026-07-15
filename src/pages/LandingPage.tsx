@@ -82,14 +82,14 @@ export default function LandingPage({ onLaunchApp }: LandingPageProps) {
 
       {/* Navigation Header */}
       <nav className="relative z-10 max-w-7xl mx-auto px-6 h-20 flex items-center justify-between border-b border-white/10">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 group cursor-pointer hover:opacity-80 transition-opacity">
           <img
-            src="/src/assets/images/agunnaya_logo_1782747905258.jpg"
-            alt="AL"
-            className="w-8 h-8 rounded-xl object-cover shadow-lg shadow-blue-500/20 border border-white/10"
+            src="/assets/images/app-icon-interactive.png"
+            alt="Agunnaya Labs"
+            className="w-8 h-8 rounded-xl object-cover shadow-lg shadow-blue-500/20 border border-white/10 group-hover:shadow-purple-500/30 transition-all"
             referrerPolicy="no-referrer"
           />
-          <span className="font-display font-bold text-xl tracking-tight">
+          <span className="font-display font-bold text-xl tracking-tight group-hover:text-brand-blue transition-colors">
             Agunnaya <span className="bg-gradient-to-r from-[#0052FF] to-[#A855F7] bg-clip-text text-transparent">Labs</span>
           </span>
         </div>
@@ -140,7 +140,7 @@ export default function LandingPage({ onLaunchApp }: LandingPageProps) {
         <div className="relative mt-12 mx-auto max-w-4xl rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(139,92,246,0.12)] bg-zinc-950/40 p-1.5 group">
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent z-10 pointer-events-none"></div>
           <img
-            src="/src/assets/images/agunnaya_banner_1782747920246.jpg"
+            src="/assets/images/agunnaya_banner.png"
             alt="Agunnaya Labs Studio 3D Developer Workspace"
             className="w-full h-auto rounded-xl object-cover transition-transform duration-700 group-hover:scale-[1.01]"
             referrerPolicy="no-referrer"
@@ -305,9 +305,9 @@ export default function LandingPage({ onLaunchApp }: LandingPageProps) {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <img
-                src="/src/assets/images/agunnaya_logo_1782747905258.jpg"
-                alt="AL"
-                className="w-8 h-8 rounded-lg object-cover border border-white/10"
+                src="/assets/images/app-icon-interactive.png"
+                alt="Agunnaya Labs"
+                className="w-8 h-8 rounded-lg object-cover border border-white/10 hover:shadow-lg hover:shadow-brand-purple/20 transition-shadow"
                 referrerPolicy="no-referrer"
               />
               <span className="font-display font-bold text-lg tracking-tight">
