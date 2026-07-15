@@ -149,27 +149,12 @@ export default function LandingPage({ onLaunchApp }: LandingPageProps) {
         {/* Premium 3D Workspace Banner Showcase */}
         <div className="relative mt-12 mx-auto max-w-4xl rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(139,92,246,0.12)] bg-gradient-to-b from-zinc-900 to-zinc-950 p-1.5 group">
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent z-10 pointer-events-none"></div>
-<<<<<<< HEAD
           <img
             src="/assets/images/agunnaya_banner.png"
             alt="Agunnaya Labs Studio 3D Developer Workspace"
             className="w-full h-auto rounded-xl object-cover transition-transform duration-700 group-hover:scale-[1.01]"
             referrerPolicy="no-referrer"
           />
-=======
-          <div className="relative w-full h-64 md:h-80 rounded-xl bg-gradient-to-br from-[#0052FF]/20 to-[#A855F7]/20 flex items-center justify-center overflow-hidden group-hover:scale-[1.01] transition-transform duration-700">
-            <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_30%,rgba(0,82,255,0.1)_50%,transparent_70%)] animate-pulse"></div>
-            <div className="relative flex flex-col items-center gap-4 z-10">
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-gradient-to-br from-[#0052FF] to-[#A855F7] flex items-center justify-center text-4xl md:text-5xl font-bold text-white shadow-[0_0_40px_rgba(0,82,255,0.5)]">
-                A
-              </div>
-              <div className="text-center">
-                <p className="text-lg md:text-2xl font-bold">Agunnaya Labs Studio</p>
-                <p className="text-sm md:text-base text-zinc-400 mt-1">AI Web3 Creation Engine</p>
-              </div>
-            </div>
-          </div>
->>>>>>> e2d6ae4d3dd9d45283901a5e241073f25cebe559
         </div>
 
         {/* Live Chain stats widget */}
@@ -363,18 +348,12 @@ export default function LandingPage({ onLaunchApp }: LandingPageProps) {
           {/* Brand Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-<<<<<<< HEAD
               <img
                 src="/assets/images/app-icon-interactive.png"
                 alt="Agunnaya Labs"
                 className="w-8 h-8 rounded-lg object-cover border border-white/10 hover:shadow-lg hover:shadow-brand-purple/20 transition-shadow"
                 referrerPolicy="no-referrer"
               />
-=======
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0052FF] to-[#A855F7] flex items-center justify-center font-bold text-white text-xs border border-white/10">
-                AL
-              </div>
->>>>>>> e2d6ae4d3dd9d45283901a5e241073f25cebe559
               <span className="font-display font-bold text-lg tracking-tight">
                 Agunnaya <span className="text-brand-purple">Labs</span>
               </span>
