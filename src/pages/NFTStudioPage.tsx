@@ -37,7 +37,7 @@ export default function NFTStudioPage({ wallet, collections, onRefreshNFTs, addT
 
     setTimeout(() => {
       const generatedAddress = "0x" + Math.random().toString(16).substr(2, 40);
-      const mockBanner = bannerUrl.trim() || "/assets/images/nft-gallery.png";
+      const mockBanner = bannerUrl.trim() || "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=500&auto=format&fit=crop&q=80";
 
       const newColl: NFTCollection = {
         contractAddress: generatedAddress,
@@ -247,7 +247,7 @@ export default function NFTStudioPage({ wallet, collections, onRefreshNFTs, addT
                 type="url"
                 value={bannerUrl}
                 onChange={(e) => setBannerUrl(e.target.value)}
-                placeholder="https://example.com/image.png or IPFS link"
+                placeholder="https://images.unsplash.com/... or IPFS link"
                 className="w-full bg-zinc-950 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none font-mono"
               />
             </div>

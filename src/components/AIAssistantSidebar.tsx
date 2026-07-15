@@ -39,13 +39,31 @@ export default function AIAssistantSidebar({ isOpen, onClose }: AIAssistantSideb
         }
       );
 
-      setMessages(prev => [...prev, { role: "assistant", content: response }]);
+      const words = response.split(" ");
+      let currentText = "";
+      let wordIdx = 0;
+      setMessages(prev => [...prev, { role: "assistant", content: "" }]);
+
+      const interval = setInterval(() => {
+        if (wordIdx < words.length) {
+          currentText += (wordIdx === 0 ? "" : " ") + words[wordIdx];
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: "assistant", content: currentText };
+            return updated;
+          });
+          wordIdx++;
+        } else {
+          clearInterval(interval);
+          setIsLoading(false);
+        }
+      }, 20);
+
     } catch (err: any) {
       setMessages(prev => [...prev, {
         role: "assistant",
         content: `Sorry, I encountered an issue: ${err.message || "Connection refused. Please make sure process.env.GEMINI_API_KEY is configured."}`
       }]);
-    } finally {
       setIsLoading(false);
     }
   };

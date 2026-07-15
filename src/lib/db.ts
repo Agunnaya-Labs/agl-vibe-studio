@@ -46,105 +46,253 @@ export function getEthReturnForTokens(currentSupply: number, tokensToSell: numbe
   return { gross, fee, net };
 }
 
-// EMPTY DEFAULTS - All data now sourced from Firebase in production
-// These are fallback values only when Firestore is unavailable
-const EMPTY_WALLET: WalletState = {
+// INITIAL SEED DATA
+const SEED_TOKENS: Token[] = [
+  {
+    address: "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0",
+    name: "Agunnaya Utility Token",
+    symbol: "AGL",
+    description: "The official utility token of Agunnaya Labs Studio. Used to unlock premium templates, pay for autonomous AI Agent triggers at a discount, secure governance rights, and stake for premium yield.",
+    creator: "0x479596943e70316A0d893De1876EBeA1Ea8E4D5B",
+    creatorFeesEarned: 12.45,
+    currentPrice: BASE_PRICE + SLOPE * 8500000,
+    supply: 8500000,
+    maxSupply: 1000000000,
+    marketCap: (BASE_PRICE + SLOPE * 8500000) * 8500000,
+    reserveEth: getReserveAtSupply(8500000),
+    volume24h: 3.42,
+    category: "utility",
+    logoUrl: "https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=128&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    socials: { website: "https://agunnaya.io", twitter: "https://twitter.com/agunnayalabs" },
+    isVerified: true,
+    vestingWeeks: 4,
+    referralRewardsPct: 2,
+    createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000
+  },
+  {
+    address: "0x3456...ef01",
+    name: "Base AI Core",
+    symbol: "BAIC",
+    description: "An AI agent token supporting decentralized machine learning consensus on Base. Automatically buys compute bandwidth on-chain.",
+    creator: "0xCreatorOfBAIC",
+    creatorFeesEarned: 1.87,
+    currentPrice: BASE_PRICE + SLOPE * 4200000,
+    supply: 4200000,
+    maxSupply: 500000000,
+    marketCap: (BASE_PRICE + SLOPE * 4200000) * 4200000,
+    reserveEth: getReserveAtSupply(4200000),
+    volume24h: 12.8,
+    category: "ai",
+    logoUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    socials: { website: "https://base.org" },
+    isVerified: true,
+    vestingWeeks: 0,
+    referralRewardsPct: 1,
+    createdAt: Date.now() - 5 * 24 * 60 * 60 * 1000
+  },
+  {
+    address: "0x89ab...bcde",
+    name: "Meme Pad Chad",
+    symbol: "CHAD",
+    description: "The ultimate hyper-deflationary meme asset on Base. Real physical gainz simulated mathematically via linear curves.",
+    creator: "0xMemeMaster",
+    creatorFeesEarned: 5.42,
+    currentPrice: BASE_PRICE + SLOPE * 12500000,
+    supply: 12500000,
+    maxSupply: 1000000000,
+    marketCap: (BASE_PRICE + SLOPE * 12500000) * 12500000,
+    reserveEth: getReserveAtSupply(12500000),
+    volume24h: 24.15,
+    category: "meme",
+    logoUrl: "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=128&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    socials: { website: "https://chadpad.xyz", twitter: "https://twitter.com/chadpad" },
+    isVerified: false,
+    vestingWeeks: 2,
+    referralRewardsPct: 3,
+    createdAt: Date.now() - 1 * 24 * 60 * 60 * 1000
+  }
+];
+
+const SEED_NFTS: NFTCollection[] = [
+  {
+    contractAddress: "0x7890...cdef",
+    name: "Agunnaya Genesis Keys",
+    symbol: "AGK",
+    description: "A premium collection of 1000 fully on-chain 3D access keys on Base. Unlocks unlimited free deployments, early access to new AI Agents, and active fee share on Agunnaya Labs Studio.",
+    creator: "0x479596943e70316A0d893De1876EBeA1Ea8E4D5B",
+    mintPrice: 0.05,
+    currentSupply: 420,
+    maxSupply: 1000,
+    royaltyFee: 5,
+    isRevealed: true,
+    isVerified: true,
+    imageUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=80",
+    socials: { website: "https://agunnaya.io", twitter: "https://twitter.com/agunnayalabs" },
+    items: [
+      {
+        id: 1,
+        name: "Agunnaya Genesis #1",
+        description: "The Genesis Key of Wisdom. Forged with pure digital amethyst and Base steel.",
+        imageUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=80",
+        traits: [
+          { trait_type: "Aura", value: "Supernova" },
+          { trait_type: "Access Tier", value: "Agunnaya Elite" },
+          { trait_type: "Metadata", value: "Pure Gold" }
+        ]
+      },
+      {
+        id: 2,
+        name: "Agunnaya Genesis #2",
+        description: "The Chronos Core key. Simulates multi-agent execution pipelines.",
+        imageUrl: "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=500&auto=format&fit=crop&q=80",
+        traits: [
+          { trait_type: "Aura", value: "Cobalt" },
+          { trait_type: "Access Tier", value: "Developer Pro" },
+          { trait_type: "Metadata", value: "Silver Gloss" }
+        ]
+      }
+    ],
+    createdAt: Date.now() - 20 * 24 * 60 * 60 * 1000
+  }
+];
+
+const SEED_DAOS: DAO[] = [
+  {
+    contractAddress: "0xdad1...eade",
+    name: "Base Builders Guild DAO",
+    symbol: "BBG",
+    description: "A community DAO designed to fund open-source development tools, public goods, and meme generators exclusively on Base. Supported by Agunnaya Labs multi-sig.",
+    creator: "0xBBGCreator",
+    governanceTokenAddress: "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0", // AGL token as gov token
+    treasuryBalanceEth: 25.5,
+    memberCount: 142,
+    proposals: [
+      {
+        id: "prop-1",
+        title: "Sponsor Base Memefest Hackathon 2026",
+        description: "Deploy 5 ETH from the guild treasury to provide cash prizes for the best bonding curve meme coin created using Agunnaya Studio.",
+        creator: "0xGuildElder",
+        status: "Active",
+        votesFor: 852000,
+        votesAgainst: 12000,
+        endTime: Date.now() + 5 * 24 * 60 * 60 * 1000,
+        executed: false
+      },
+      {
+        id: "prop-2",
+        title: "Integrate Gas sponsorship and Account Abstraction",
+        description: "Deploy 2 ETH to sponsor gas fees for new users launching their first contract via Agunnaya AI Builder.",
+        creator: "0xSmartDev",
+        status: "Passed",
+        votesFor: 1200000,
+        votesAgainst: 5000,
+        endTime: Date.now() - 1 * 24 * 60 * 60 * 1000,
+        executed: true
+      }
+    ],
+    createdAt: Date.now() - 15 * 24 * 60 * 60 * 1000
+  }
+];
+
+const SEED_GAMEFI: GameFiProject[] = [
+  {
+    contractAddress: "0x9876...5432",
+    name: "Base Cyber Arena",
+    symbol: "BCA",
+    description: "An arcade-inspired, retro Battle Pass game where players complete daily on-chain developer challenges to earn XP, achievements, and unlock exclusive rewards.",
+    creator: "0xArcadeMaster",
+    prizePoolEth: 4.25,
+    activeSeasons: 2,
+    createdAt: Date.now() - 10 * 24 * 60 * 60 * 1000,
+    missions: [
+      { id: "m-1", title: "Launch your first custom token", description: "Successfully deploy any token type on Base using the AI Builder or Bonding Curve Launchpad.", xpReward: 150, aglReward: 10, completed: false },
+      { id: "m-2", title: "Execute a Bonding Curve trade", description: "Complete a Buy or Sell order of at least 0.01 ETH on any active bonding curve token.", xpReward: 100, aglReward: 5, completed: false },
+      { id: "m-3", title: "Vote on a DAO Proposal", description: "Connect your wallet and sign a voting transaction on an active community proposal.", xpReward: 80, aglReward: 2, completed: false }
+    ],
+    achievements: [
+      { id: "ach-1", title: "Meme Prophet", description: "Buy a bonding curve token before its supply reaches 1,000,000.", badgeIcon: "Sparkles", unlocked: false },
+      { id: "ach-2", title: "AI Alchemist", description: "Successfully generate and audit a custom Solidity contract using Agunnaya Labs AI Builder.", badgeIcon: "Brain", unlocked: false },
+      { id: "ach-3", title: "Master Governor", description: "Create a DAO and submit your first treasury grant proposal.", badgeIcon: "ShieldAlert", unlocked: false }
+    ],
+    leaderboard: [
+      { rank: 1, user: "0x4795...4D5B", xp: 1240, score: 9800 },
+      { rank: 2, user: "0xGuildElder", xp: 950, score: 7200 },
+      { rank: 3, user: "0xMemeMaster", xp: 820, score: 6100 }
+    ],
+    battlePass: [
+      { level: 1, xpRequired: 100, rewardName: "Beginner Dev Badge", rewardType: "badge", unlocked: true },
+      { level: 2, xpRequired: 250, rewardName: "10 AGL Utility Tokens", rewardType: "token", unlocked: false },
+      { level: 3, xpRequired: 500, rewardName: "Custom Cyber Shell Avatar (NFT)", rewardType: "nft", unlocked: false }
+    ]
+  }
+];
+
+const SEED_AGENTS: AIAgent[] = [
+  {
+    id: "sentinel",
+    name: "Agunnaya Labs Sentinel",
+    symbol: "SENT",
+    description: "Your autonomous blockchain security sentinel. Watches Base transactions, checks code for vulnerabilities, and advises on Gas-optimal multi-sig paths.",
+    contractAddress: "0xAgentSentinelAddress",
+    creator: "0x479596943e70316A0d893De1876EBeA1Ea8E4D5B",
+    tokenPrice: 0.005,
+    usageFeeEth: 0.001,
+    lifetimeRevenueEth: 0.142,
+    queryCount: 142,
+    systemPrompt: "You are Agunnaya Labs Sentinel, a precise security auditor AI core running on Base. Speak like a friendly but strict security terminal.",
+    avatarUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=60",
+    aglRewardDiscounts: true,
+    chatHistory: [
+      { role: "assistant", content: "Sentinel security subroutines loaded. Enter query or drag-and-drop a smart contract file to audit." }
+    ],
+    createdAt: Date.now() - 12 * 24 * 60 * 60 * 1000
+  },
+  {
+    id: "oracle",
+    name: "Base Oracle Agent",
+    symbol: "BORA",
+    description: "An autonomous data broker. Fetches off-chain API data, formats it into verifiable Merkle trees, and signs on-chain state updates.",
+    contractAddress: "0xAgentOracleAddress",
+    creator: "0x479596943e70316A0d893De1876EBeA1Ea8E4D5B",
+    tokenPrice: 0.008,
+    usageFeeEth: 0.002,
+    lifetimeRevenueEth: 0.088,
+    queryCount: 92,
+    systemPrompt: "You are BORA (Base Oracle Agent). You speak in elegant cybernetic data-streams, analyzing markets, prices, and off-chain telemetry with high fidelity.",
+    avatarUrl: "https://images.unsplash.com/photo-1614741118887-7a4ee193a5fa?w=128&auto=format&fit=crop&q=60",
+    aglRewardDiscounts: false,
+    chatHistory: [
+      { role: "assistant", content: "Oracle node online. Ready to pipe off-chain parameters onto Base." }
+    ],
+    createdAt: Date.now() - 4 * 24 * 60 * 60 * 1000
+  }
+];
+
+const SEED_STAKING: StakingPool[] = [
+  { id: "s-1", tokenName: "Agunnaya Labs Token", tokenSymbol: "AGL", tokenAddress: "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0", apr: 38.5, tvlEth: 12.8, stakedBalance: 0, earnedRewards: 0, lockPeriodDays: 7 },
+  { id: "s-2", tokenName: "Meme Pad Chad", tokenSymbol: "CHAD", tokenAddress: "0x89ab...bcde", apr: 82.0, tvlEth: 4.15, stakedBalance: 0, earnedRewards: 0, lockPeriodDays: 0 },
+  { id: "s-3", tokenName: "Base AI Core", tokenSymbol: "BAIC", tokenAddress: "0x3456...ef01", apr: 48.0, tvlEth: 6.42, stakedBalance: 0, earnedRewards: 0, lockPeriodDays: 14 }
+];
+
+const SEED_ACTIVITIES: Activity[] = [
+  { id: "a-1", type: "create", tokenSymbol: "AGL", tokenAddress: "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0", user: "0x479596943e70316A0d893De1876EBeA1Ea8E4D5B", amount: 1000000000, ethValue: 0, timestamp: Date.now() - 30 * 24 * 60 * 60 * 1000, details: "Platform genesis launch of Agunnaya Labs Utility Token" },
+  { id: "a-2", type: "buy", tokenSymbol: "CHAD", tokenAddress: "0x89ab...bcde", user: "0x9821...5523", amount: 12000, ethValue: 0.015, timestamp: Date.now() - 1 * 24 * 60 * 60 * 1000, details: "Bought 12,000 CHAD tokens on the bonding curve" },
+  { id: "a-3", type: "mint", tokenSymbol: "AGK", tokenAddress: "0x7890...cdef", user: "0x9821...5523", amount: 1, ethValue: 0.05, timestamp: Date.now() - 20 * 24 * 60 * 60 * 1000, details: "Minted Agunnaya Genesis Key #1 access NFT" },
+  { id: "a-4", type: "vote", tokenSymbol: "BBG", tokenAddress: "0xdad1...eade", user: "0x4795...4D5B", amount: 50000, ethValue: 0, timestamp: Date.now() - 12 * 24 * 60 * 60 * 1000, details: "Voted FOR Proposal #2 'AA integration' with 50,000 voting weight" }
+];
+
+const DEFAULT_WALLET: WalletState = {
   isConnected: false,
   address: "",
-  balanceEth: 0,
+  balanceEth: 10.0, // starts with 10 mock ETH for testing the platform!
   walletType: null,
   isSmartAccount: false,
-  sponsoredGasEth: 0,
-  aglTokenBalance: 0
+  sponsoredGasEth: 0.05, // 0.05 sponsored gas for AA smart accounts
+  aglTokenBalance: 250 // starts with 250 mock AGL token balance!
 };
 
 // PERSISTENCE WRAPPER
 export class AgunnayaDatabase {
-  // Async methods to fetch real data from Firestore
-  static async fetchTokensAsync(): Promise<Token[]> {
-    try {
-      const tokenSnap = await getDocs(collection(db, "tokens"));
-      const tokens: Token[] = [];
-      tokenSnap.forEach(doc => tokens.push(doc.data() as Token));
-      return tokens;
-    } catch (err) {
-      console.warn("Failed to fetch tokens from Firestore:", err);
-      return [];
-    }
-  }
-
-  static async fetchNFTsAsync(): Promise<NFTCollection[]> {
-    try {
-      const nftSnap = await getDocs(collection(db, "nfts"));
-      const nfts: NFTCollection[] = [];
-      nftSnap.forEach(doc => nfts.push(doc.data() as NFTCollection));
-      return nfts;
-    } catch (err) {
-      console.warn("Failed to fetch NFTs from Firestore:", err);
-      return [];
-    }
-  }
-
-  static async fetchDAOsAsync(): Promise<DAO[]> {
-    try {
-      const daoSnap = await getDocs(collection(db, "daos"));
-      const daos: DAO[] = [];
-      daoSnap.forEach(doc => daos.push(doc.data() as DAO));
-      return daos;
-    } catch (err) {
-      console.warn("Failed to fetch DAOs from Firestore:", err);
-      return [];
-    }
-  }
-
-  static async fetchGameFiAsync(): Promise<GameFiProject[]> {
-    try {
-      const gamefiSnap = await getDocs(collection(db, "gamefi"));
-      const gamefi: GameFiProject[] = [];
-      gamefiSnap.forEach(doc => gamefi.push(doc.data() as GameFiProject));
-      return gamefi;
-    } catch (err) {
-      console.warn("Failed to fetch GameFi projects from Firestore:", err);
-      return [];
-    }
-  }
-
-  static async fetchAgentsAsync(): Promise<AIAgent[]> {
-    try {
-      const agentSnap = await getDocs(collection(db, "agents"));
-      const agents: AIAgent[] = [];
-      agentSnap.forEach(doc => agents.push(doc.data() as AIAgent));
-      return agents;
-    } catch (err) {
-      console.warn("Failed to fetch AI Agents from Firestore:", err);
-      return [];
-    }
-  }
-
-  static async fetchStakingAsync(): Promise<StakingPool[]> {
-    try {
-      const stakingSnap = await getDocs(collection(db, "staking"));
-      const staking: StakingPool[] = [];
-      stakingSnap.forEach(doc => staking.push(doc.data() as StakingPool));
-      return staking;
-    } catch (err) {
-      console.warn("Failed to fetch staking pools from Firestore:", err);
-      return [];
-    }
-  }
-
-  static async fetchActivitiesAsync(): Promise<Activity[]> {
-    try {
-      const actSnap = await getDocs(collection(db, "activities"));
-      const activities: Activity[] = [];
-      actSnap.forEach(doc => activities.push(doc.data() as Activity));
-      return activities.sort((a, b) => b.timestamp - a.timestamp);
-    } catch (err) {
-      console.warn("Failed to fetch activities from Firestore:", err);
-      return [];
-    }
-  }
-
   static async saveToFirestore(collectionName: string, docId: string, data: any) {
     if (!auth.currentUser) {
       // Passive local-only mode when not signed in with Google
@@ -318,7 +466,11 @@ export class AgunnayaDatabase {
 
   static getTokens(): Token[] {
     const data = localStorage.getItem("agl_tokens");
-    return data ? JSON.parse(data) : [];
+    if (!data) {
+      localStorage.setItem("agl_tokens", JSON.stringify(SEED_TOKENS));
+      return SEED_TOKENS;
+    }
+    return JSON.parse(data);
   }
 
   static saveTokens(tokens: Token[]) {
@@ -330,7 +482,11 @@ export class AgunnayaDatabase {
 
   static getNFTs(): NFTCollection[] {
     const data = localStorage.getItem("agl_nfts");
-    return data ? JSON.parse(data) : [];
+    if (!data) {
+      localStorage.setItem("agl_nfts", JSON.stringify(SEED_NFTS));
+      return SEED_NFTS;
+    }
+    return JSON.parse(data);
   }
 
   static saveNFTs(nfts: NFTCollection[]) {
@@ -342,7 +498,11 @@ export class AgunnayaDatabase {
 
   static getDAOs(): DAO[] {
     const data = localStorage.getItem("agl_daos");
-    return data ? JSON.parse(data) : [];
+    if (!data) {
+      localStorage.setItem("agl_daos", JSON.stringify(SEED_DAOS));
+      return SEED_DAOS;
+    }
+    return JSON.parse(data);
   }
 
   static saveDAOs(daos: DAO[]) {
@@ -354,7 +514,11 @@ export class AgunnayaDatabase {
 
   static getGameFi(): GameFiProject[] {
     const data = localStorage.getItem("agl_gamefi");
-    return data ? JSON.parse(data) : [];
+    if (!data) {
+      localStorage.setItem("agl_gamefi", JSON.stringify(SEED_GAMEFI));
+      return SEED_GAMEFI;
+    }
+    return JSON.parse(data);
   }
 
   static saveGameFi(gamefi: GameFiProject[]) {
@@ -366,7 +530,11 @@ export class AgunnayaDatabase {
 
   static getAgents(): AIAgent[] {
     const data = localStorage.getItem("agl_agents");
-    return data ? JSON.parse(data) : [];
+    if (!data) {
+      localStorage.setItem("agl_agents", JSON.stringify(SEED_AGENTS));
+      return SEED_AGENTS;
+    }
+    return JSON.parse(data);
   }
 
   static saveAgents(agents: AIAgent[]) {
@@ -378,7 +546,11 @@ export class AgunnayaDatabase {
 
   static getStaking(): StakingPool[] {
     const data = localStorage.getItem("agl_staking");
-    return data ? JSON.parse(data) : [];
+    if (!data) {
+      localStorage.setItem("agl_staking", JSON.stringify(SEED_STAKING));
+      return SEED_STAKING;
+    }
+    return JSON.parse(data);
   }
 
   static saveStaking(pools: StakingPool[]) {
@@ -390,7 +562,11 @@ export class AgunnayaDatabase {
 
   static getWallet(): WalletState {
     const data = localStorage.getItem("agl_wallet");
-    return data ? JSON.parse(data) : EMPTY_WALLET;
+    if (!data) {
+      localStorage.setItem("agl_wallet", JSON.stringify(DEFAULT_WALLET));
+      return DEFAULT_WALLET;
+    }
+    return JSON.parse(data);
   }
 
   static saveWallet(wallet: WalletState) {
@@ -399,7 +575,10 @@ export class AgunnayaDatabase {
 
   static getActivities(): Activity[] {
     const data = localStorage.getItem("agl_activities");
-    if (!data) return [];
+    if (!data) {
+      localStorage.setItem("agl_activities", JSON.stringify(SEED_ACTIVITIES));
+      return SEED_ACTIVITIES;
+    }
     return JSON.parse(data).sort((a: Activity, b: Activity) => b.timestamp - a.timestamp);
   }
 

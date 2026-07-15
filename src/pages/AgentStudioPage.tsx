@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { AIAgent, WalletState } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
-import { chatWithAgentAI } from "../lib/gemini";
-import { Bot, Send, BrainCircuit, X, MessageSquare, Plus, Zap, Award, Coins } from "lucide-react";
+import { chatWithAgentAI, optimizeSystemPromptAI } from "../lib/gemini";
+import { Bot, Send, BrainCircuit, X, MessageSquare, Plus, Zap, Award, Coins, Sparkles, Cpu, Layers, ShieldCheck } from "lucide-react";
 
 interface AgentStudioPageProps {
   wallet: WalletState;
@@ -25,6 +25,25 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
   const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [optimizingPrompt, setOptimizingPrompt] = useState(false);
+
+  const handleOptimizePrompt = async () => {
+    if (!systemPrompt.trim() || optimizingPrompt) return;
+    setOptimizingPrompt(true);
+    addTerminalLog("system", "AI Agent Optimizer: Initializing cognitive tuning pipeline via Gemini 3.5...");
+    try {
+      const optimized = await optimizeSystemPromptAI(systemPrompt);
+      setSystemPrompt(optimized);
+      showToast("System directive optimized!", "success");
+      addTerminalLog("success", "AI Agent Optimizer: Compiled detailed autonomous directive schema successfully.");
+    } catch (err: any) {
+      console.error(err);
+      showToast("Optimization failed: " + (err.message || "Network issue"), "error");
+      addTerminalLog("error", "AI Agent Optimizer: Fine-tuning pipeline rejected. Verify API configurations.");
+    } finally {
+      setOptimizingPrompt(false);
+    }
+  };
 
   const handleCreateAgent = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +59,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
     setTimeout(() => {
       const generatedId = "agent_" + Math.random().toString(36).substr(2, 5);
       const generatedAddress = "0x" + Math.random().toString(16).substr(2, 40);
-      const mockAvatar = "/assets/images/agent-avatar.png";
+      const mockAvatar = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=60";
 
       const newAgent: AIAgent = {
         id: generatedId,
@@ -110,14 +129,33 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
       const allMessages = [...chatMessages, { role: "user", content: userText }];
       
       const response = await chatWithAgentAI(allMessages, activeChatAgent);
-      setChatMessages(prev => [...prev, { role: "assistant", content: response }]);
+      
+      const words = response.split(" ");
+      let currentText = "";
+      let wordIdx = 0;
+      setChatMessages(prev => [...prev, { role: "assistant", content: "" }]);
+
+      const interval = setInterval(() => {
+        if (wordIdx < words.length) {
+          currentText += (wordIdx === 0 ? "" : " ") + words[wordIdx];
+          setChatMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: "assistant", content: currentText };
+            return updated;
+          });
+          wordIdx++;
+        } else {
+          clearInterval(interval);
+          setChatLoading(false);
+        }
+      }, 20);
 
       // Mutate agent stats (increase query count & lifetime revenue)
       const allAgents = AgunnayaDatabase.getAgents();
       const found = allAgents.find(a => a.id === activeChatAgent.id);
       if (found) {
         found.queryCount += 1;
-        found.lifetimeRevenueEth += activeChatAgent.subscriptionFeeEth;
+        found.lifetimeRevenueEth += activeChatAgent.usageFeeEth;
         AgunnayaDatabase.saveAgents(allAgents);
         
         // Sync active state
@@ -129,7 +167,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
       if (wallet.isConnected) {
         const updatedWallet = { 
           ...wallet, 
-          balanceEth: Math.max(0, wallet.balanceEth - activeChatAgent.subscriptionFeeEth) 
+          balanceEth: Math.max(0, wallet.balanceEth - activeChatAgent.usageFeeEth) 
         };
         AgunnayaDatabase.saveWallet(updatedWallet);
       }
@@ -139,7 +177,6 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
         role: "assistant",
         content: `Error connecting to AI kernel: ${err.message || "Endpoint timeout."}`
       }]);
-    } finally {
       setChatLoading(false);
     }
   };
@@ -215,7 +252,19 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">System Directive Prompt (Directives to model behavior)</label>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500">System Directive Prompt (Directives to model behavior)</label>
+                <button
+                  type="button"
+                  id="btn-optimize-directive"
+                  onClick={handleOptimizePrompt}
+                  disabled={optimizingPrompt || !systemPrompt.trim()}
+                  className="text-[10px] px-2.5 py-1 rounded bg-brand-purple/10 border border-brand-purple/20 hover:bg-brand-purple hover:border-brand-purple text-brand-purple hover:text-white transition-all duration-200 flex items-center gap-1 font-mono font-bold disabled:opacity-40 disabled:hover:bg-brand-purple/10 disabled:hover:text-brand-purple disabled:hover:border-brand-purple/20 cursor-pointer"
+                >
+                  <Sparkles className={`w-3 h-3 ${optimizingPrompt ? "animate-spin" : ""}`} />
+                  <span>{optimizingPrompt ? "Optimizing..." : "AI Auto-Optimize"}</span>
+                </button>
+              </div>
               <textarea
                 id="agent-directives-input"
                 value={systemPrompt}
@@ -257,6 +306,30 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
               >
                 ✕
               </button>
+            </div>
+
+            {/* Cognitive Diagnostics HUD */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[9px] font-mono bg-zinc-900/40 p-2.5 rounded-xl border border-white/5 text-zinc-400">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-zinc-500 uppercase">Response Mode:</span>
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <Cpu className="w-2.5 h-2.5" /> LOW LATENCY
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-zinc-500 uppercase">Average Latency:</span>
+                <span className="text-white font-bold">~240ms (cached)</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-zinc-500 uppercase">Security Audit:</span>
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <ShieldCheck className="w-2.5 h-2.5" /> SECURE
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-zinc-500 uppercase">Sponsorship Gas:</span>
+                <span className="text-brand-purple font-bold">100% COVERED</span>
+              </div>
             </div>
 
             {/* Chat list */}

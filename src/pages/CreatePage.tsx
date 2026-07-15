@@ -79,7 +79,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
 
     setTimeout(() => {
       // Create token object representing the deployed asset
-      const mockLogo = "/assets/images/logo-main.png";
+      const mockLogo = "https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=128&auto=format&fit=crop&q=60";
       const newToken: Token = {
         address: "0x" + Math.random().toString(16).substr(2, 40),
         name: aiResult.name,
@@ -99,7 +99,8 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
         isVerified: true,
         vestingWeeks: 0,
         referralRewardsPct: 0,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        implementation: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" // Default AI-Architect template implementation
       };
 
       // Add to database
@@ -156,7 +157,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
 
     setTimeout(() => {
       const generatedAddress = "0x" + Math.random().toString(16).substr(2, 40);
-      const mockLogoUrl = tokenLogo.trim() || "/assets/images/logo-main.png";
+      const mockLogoUrl = tokenLogo.trim() || "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=128&auto=format&fit=crop&q=60";
       
       const newToken: Token = {
         address: generatedAddress,
@@ -177,7 +178,8 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
         isVerified: false,
         vestingWeeks: vesting,
         referralRewardsPct: referral,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        implementation: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" // Default standard bonding curve implementation
       };
 
       // Register new token

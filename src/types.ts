@@ -25,6 +25,7 @@ export interface Token {
   vestingWeeks: number;
   referralRewardsPct: number;
   createdAt: number; // Timestamp
+  implementation?: string; // Proxy implementation address
 }
 
 export interface NFTItem {
