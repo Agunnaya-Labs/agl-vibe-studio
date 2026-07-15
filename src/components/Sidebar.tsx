@@ -13,7 +13,8 @@ import {
   Rocket,
   Gift,
   HardDrive,
-  Mail
+  Mail,
+  Flame
 } from "lucide-react";
 
 interface SidebarProps {
@@ -36,6 +37,7 @@ export default function Sidebar({ currentTab, onSelectTab, isAdmin, onGoHome }: 
     { id: "gamefi", label: "GameFi Arena", icon: Gamepad2, category: "Assets & Creation" },
     { id: "ai-agents", label: "AI Agent Studio", icon: Bot, category: "Assets & Creation" },
     { id: "defi", label: "Staking & Swaps", icon: Coins, category: "DeFi Tools" },
+    { id: "agl-credits", label: "AGL Credits Burn", icon: Flame, category: "DeFi Tools", highlight: true },
     { id: "analytics", label: "Base Analytics", icon: BarChart3, category: "DeFi Tools" },
     { id: "referrals", label: "Referral Rewards", icon: Gift, category: "DeFi Tools" },
   ];

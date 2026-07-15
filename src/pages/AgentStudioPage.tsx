@@ -163,13 +163,30 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
         activeChatAgent.lifetimeRevenueEth = found.lifetimeRevenueEth;
       }
 
-      // Claim minor fee
+      // Claim minor fee or consume credits
       if (wallet.isConnected) {
-        const updatedWallet = { 
-          ...wallet, 
-          balanceEth: Math.max(0, wallet.balanceEth - activeChatAgent.usageFeeEth) 
-        };
+        let updatedWallet: WalletState;
+        const currentCredits = wallet.aglCredits || 0;
+        
+        if (currentCredits >= 10) {
+          // Sponsor with AGL credits (discounted model)
+          updatedWallet = {
+            ...wallet,
+            aglCredits: currentCredits - 10
+          };
+          showToast("Query sponsored with 10 AGL Credits!", "success");
+          addTerminalLog("system", `AGENT HARNESS: Query sponsored using 10 computational credits for ${activeChatAgent.name}.`);
+        } else {
+          // Pay with ETH
+          updatedWallet = { 
+            ...wallet, 
+            balanceEth: Math.max(0, wallet.balanceEth - activeChatAgent.usageFeeEth) 
+          };
+          showToast(`Paid standard subscription fee: ${activeChatAgent.usageFeeEth} ETH`, "info");
+          addTerminalLog("system", `AGENT HARNESS: Debited ${activeChatAgent.usageFeeEth} ETH standard trigger fee for ${activeChatAgent.name}.`);
+        }
         AgunnayaDatabase.saveWallet(updatedWallet);
+        onRefreshAgents();
       }
 
     } catch (err: any) {

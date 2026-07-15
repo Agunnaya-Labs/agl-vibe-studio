@@ -1,13 +1,24 @@
 import { useState } from "react";
-import { Bot, Send, BrainCircuit, X, MessageSquare, Zap } from "lucide-react";
+import { Bot, Send, BrainCircuit, X, MessageSquare, Zap, Coins } from "lucide-react";
 import { chatWithAgentAI } from "../lib/gemini";
+import { WalletState } from "../types";
+import { AgunnayaDatabase } from "../lib/db";
 
 interface AIAssistantSidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  wallet: WalletState;
+  onRefreshWallet: () => void;
+  showToast: (message: string, type: "success" | "error" | "info") => void;
 }
 
-export default function AIAssistantSidebar({ isOpen, onClose }: AIAssistantSidebarProps) {
+export default function AIAssistantSidebar({ 
+  isOpen, 
+  onClose, 
+  wallet, 
+  onRefreshWallet, 
+  showToast 
+}: AIAssistantSidebarProps) {
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([
     { role: "assistant", content: "Greetings! I am the Agunnaya Labs AI Assistant. Ask me anything about building dApps, deploying on Base, staking, or modeling bonding curve mathematics." }
   ]);
@@ -22,6 +33,31 @@ export default function AIAssistantSidebar({ isOpen, onClose }: AIAssistantSideb
 
   const handleSend = async (textToSend: string) => {
     if (!textToSend.trim() || isLoading) return;
+
+    if (wallet.isConnected) {
+      const currentCredits = wallet.aglCredits || 0;
+      if (currentCredits < 5) {
+        showToast("Insufficient credits! 5 AGL Credits required.", "error");
+        setMessages(prev => [...prev, { 
+          role: "user", 
+          content: textToSend.trim() 
+        }, {
+          role: "assistant",
+          content: "⚠️ SYSTEM NOTICE: Insufficient computational credits! Each query to the AI Advisor consumes 5 AGL Credits.\n\nPlease navigate to the **AGL Credits** page from the sidebar and permanently burn AGL tokens on-chain or in the Sepolia Sandbox to earn more computational credits."
+        }]);
+        setInput("");
+        return;
+      }
+
+      // Deduct 5 credits
+      const updatedWallet: WalletState = {
+        ...wallet,
+        aglCredits: Math.max(0, currentCredits - 5)
+      };
+      AgunnayaDatabase.saveWallet(updatedWallet);
+      onRefreshWallet();
+      showToast("Consumed 5 AGL Credits", "info");
+    }
 
     const userMsg = textToSend.trim();
     setInput("");

@@ -284,11 +284,12 @@ const SEED_ACTIVITIES: Activity[] = [
 const DEFAULT_WALLET: WalletState = {
   isConnected: false,
   address: "",
-  balanceEth: 10.0, // starts with 10 mock ETH for testing the platform!
+  balanceEth: 0.0, // starts at 0.0 until on-chain connect
   walletType: null,
   isSmartAccount: false,
-  sponsoredGasEth: 0.05, // 0.05 sponsored gas for AA smart accounts
-  aglTokenBalance: 250 // starts with 250 mock AGL token balance!
+  sponsoredGasEth: 0.0,
+  aglTokenBalance: 0, // starts at 0 until on-chain connect
+  aglCredits: 0
 };
 
 // PERSISTENCE WRAPPER

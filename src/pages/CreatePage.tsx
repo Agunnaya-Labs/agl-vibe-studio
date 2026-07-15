@@ -51,6 +51,25 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
   const handleAIGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiPrompt.trim() || aiLoading) return;
+
+    if (wallet.isConnected) {
+      const currentCredits = wallet.aglCredits || 0;
+      if (currentCredits < 50) {
+        showToast("Insufficient credits! 50 AGL Credits required for contract generation.", "error");
+        addTerminalLog("error", "AI ARCHITECT: Generation rejected. Insufficient computational credits. Navigate to the AGL Credits page and permanently burn AGL tokens to earn credits.");
+        return;
+      }
+      
+      // Deduct 50 credits
+      const updatedWallet: WalletState = {
+        ...wallet,
+        aglCredits: Math.max(0, currentCredits - 50)
+      };
+      AgunnayaDatabase.saveWallet(updatedWallet);
+      onRefreshWallet();
+      showToast("Consumed 50 AGL Credits", "info");
+    }
+
     setAiLoading(true);
     setAiResult(null);
     setDeploySuccessAI(false);
