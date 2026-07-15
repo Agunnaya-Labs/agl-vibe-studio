@@ -1,30 +1,23 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 
-// Lazy-loaded GoogleGenAI client to avoid startup crashes if key is not defined yet
-let aiClient: GoogleGenAI | null = null;
+// Lazy-loaded GoogleGenerativeAI client to avoid startup crashes if key is not defined yet
+let aiClient: GoogleGenerativeAI | null = null;
 
-function getAIClient(): GoogleGenAI {
+function getAIClient(): GoogleGenerativeAI {
   if (!aiClient) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not defined. Please add it via the Settings > Secrets panel.");
     }
-    aiClient = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
-    });
+    aiClient = new GoogleGenerativeAI(apiKey);
   }
   return aiClient;
 }
@@ -53,47 +46,52 @@ Your task is to parse the user's prompt for a blockchain project on Base and ret
 
 Format the output strictly as JSON.`;
 
-    const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: `Build a project of type "${type || 'ERC-20 Token'}" based on this prompt: "${prompt}"`,
-      config: {
-        systemInstruction,
+    const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
+    
+    const response = await model.generateContent({
+      contents: [{
+        role: "user",
+        parts: [{ text: `Build a project of type "${type || 'ERC-20 Token'}" based on this prompt: "${prompt}"` }]
+      }],
+      generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
-          required: ["name", "symbol", "description", "solidityCode", "parameters", "securityAudit", "uiTheme", "launchChecklist"],
+          type: SchemaType.OBJECT,
           properties: {
-            name: { type: Type.STRING, description: "Descriptive name of the project" },
-            symbol: { type: Type.STRING, description: "Token ticker/symbol (e.g. MEME, AGFI, NFTG)" },
-            description: { type: Type.STRING, description: "A elegant and detailed marketing/technical description of the project" },
-            solidityCode: { type: Type.STRING, description: "Full Solidity code for the smart contract, ready to compile" },
+            name: { type: SchemaType.STRING, description: "Descriptive name of the project" },
+            symbol: { type: SchemaType.STRING, description: "Token ticker/symbol (e.g. MEME, AGFI, NFTG)" },
+            description: { type: SchemaType.STRING, description: "A elegant and detailed marketing/technical description of the project" },
+            solidityCode: { type: SchemaType.STRING, description: "Full Solidity code for the smart contract, ready to compile" },
             parameters: {
-              type: Type.OBJECT,
+              type: SchemaType.OBJECT,
               properties: {
-                initialSupply: { type: Type.STRING, description: "Initial token supply or collection limit" },
-                mintPrice: { type: Type.STRING, description: "Mint/buy price in ETH or fee parameters" },
-                additionalConfig: { type: Type.STRING, description: "Any other special configurations" }
+                initialSupply: { type: SchemaType.STRING, description: "Initial token supply or collection limit" },
+                mintPrice: { type: SchemaType.STRING, description: "Mint/buy price in ETH or fee parameters" },
+                additionalConfig: { type: SchemaType.STRING, description: "Any other special configurations" }
               }
             },
-            securityAudit: { type: Type.STRING, description: "Detailed AI security audit notes, reentrancy guards, checks-effects-interactions" },
+            securityAudit: { type: SchemaType.STRING, description: "Detailed AI security audit notes, reentrancy guards, checks-effects-interactions" },
             uiTheme: {
-              type: Type.OBJECT,
+              type: SchemaType.OBJECT,
               properties: {
-                primaryColor: { type: Type.STRING, description: "Suggested Tailwind primary color class (e.g. purple-500, blue-600)" },
-                glowColor: { type: Type.STRING, description: "Tailwind glow color class (e.g. purple-500/20)" }
+                primaryColor: { type: SchemaType.STRING, description: "Suggested Tailwind primary color class (e.g. purple-500, blue-600)" },
+                glowColor: { type: SchemaType.STRING, description: "Tailwind glow color class (e.g. purple-500/20)" }
               }
             },
             launchChecklist: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
               description: "A list of 3-5 next actions to launch this on Base"
             }
-          }
+          },
+          required: ["name", "symbol", "description", "solidityCode", "parameters", "securityAudit", "uiTheme", "launchChecklist"]
         }
       }
     });
+    
+    const systemContext = { systemInstruction };
 
-    const text = response.text || "{}";
+    const text = response.response.text();
     res.json(JSON.parse(text));
   } catch (error: any) {
     console.error("AI Build Error:", error);
@@ -130,16 +128,20 @@ Roleplay as this specific AI Agent. Speak intelligently, with confidence, referr
       };
     });
 
-    const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+    const model = client.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      systemInstruction: systemInstruction
+    });
+
+    const response = await model.generateContent({
       contents: formattedContents,
-      config: {
-        systemInstruction,
+      generationConfig: {
         temperature: 0.8
       }
     });
 
-    res.json({ content: response.text || "Decompressing agent core response..." });
+    const content = response.response.text();
+    res.json({ content });
   } catch (error: any) {
     console.error("AI Agent Chat Error:", error);
     res.status(500).json({ error: error.message || "Autonomous agent system offline." });
@@ -180,24 +182,30 @@ Body: ${originalEmail.body}
 User instruction/guideline for response: ${prompt}`
       : `Draft a new email with this instruction: ${prompt}`;
 
-    const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: promptMessage,
-      config: {
-        systemInstruction,
+    const model = client.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      systemInstruction: systemInstruction
+    });
+
+    const response = await model.generateContent({
+      contents: [{
+        role: "user",
+        parts: [{ text: promptMessage }]
+      }],
+      generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
-          required: ["subject", "body"],
+          type: SchemaType.OBJECT,
           properties: {
-            subject: { type: Type.STRING, description: "A catchy, polished, professional subject line" },
-            body: { type: Type.STRING, description: "The email body formatted with HTML (using simple tags like <p>, <br>, <strong>, <ul>, <li>, no full <html> block, just clean inline tags)" }
-          }
+            subject: { type: SchemaType.STRING, description: "A catchy, polished, professional subject line" },
+            body: { type: SchemaType.STRING, description: "The email body formatted with HTML (using simple tags like <p>, <br>, <strong>, <ul>, <li>, no full <html> block, just clean inline tags)" }
+          },
+          required: ["subject", "body"]
         }
       }
     });
 
-    const text = response.text || "{}";
+    const text = response.response.text();
     res.json(JSON.parse(text));
   } catch (error: any) {
     console.error("AI Email Draft Error:", error);

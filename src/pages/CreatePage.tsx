@@ -79,7 +79,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
 
     setTimeout(() => {
       // Create token object representing the deployed asset
-      const mockLogo = "https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=128&auto=format&fit=crop&q=60";
+      const mockLogo = "/assets/images/logo-main.png";
       const newToken: Token = {
         address: "0x" + Math.random().toString(16).substr(2, 40),
         name: aiResult.name,
@@ -156,7 +156,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
 
     setTimeout(() => {
       const generatedAddress = "0x" + Math.random().toString(16).substr(2, 40);
-      const mockLogoUrl = tokenLogo.trim() || "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=128&auto=format&fit=crop&q=60";
+      const mockLogoUrl = tokenLogo.trim() || "/assets/images/logo-main.png";
       
       const newToken: Token = {
         address: generatedAddress,
