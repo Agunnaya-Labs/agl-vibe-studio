@@ -123,9 +123,13 @@ export default function DashboardPage({
           </div>
           <div className="mt-4 pt-4 border-t border-white/5 flex justify-between items-center text-xs">
             <span className="text-zinc-500">Status:</span>
-            <span className="font-bold text-emerald-400 flex items-center gap-1 font-mono">
-              <FlameKindling className="w-3.5 h-3.5" /> Sponsored Active
-            </span>
+            <button
+              id="dashboard-manage-gas-btn"
+              onClick={() => onSelectTab("gas-dashboard")}
+              className="font-bold text-emerald-400 flex items-center gap-1 font-mono hover:text-brand-purple transition-colors bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 hover:border-brand-purple/30 hover:bg-brand-purple/10"
+            >
+              <FlameKindling className="w-3.5 h-3.5 animate-pulse" /> Manage & Faucet
+            </button>
           </div>
         </div>
 

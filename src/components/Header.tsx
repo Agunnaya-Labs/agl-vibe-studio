@@ -136,10 +136,14 @@ export default function Header({
         </div>
 
         {/* Live Gas Monitor */}
-        <div className="hidden md:flex items-center gap-2 text-zinc-500 text-xs font-mono">
-          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]"></span>
-          <span className="text-[10px]">GAS: 0.01 gwei</span>
-        </div>
+        <button
+          id="header-gas-monitor"
+          onClick={() => onSelectTab("gas-dashboard")}
+          className="hidden md:flex items-center gap-2 text-zinc-500 hover:text-brand-purple hover:bg-white/5 px-2 py-1 rounded-md transition-all text-xs font-mono group"
+        >
+          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981] group-hover:bg-brand-purple group-hover:shadow-[0_0_8px_rgba(139,92,246,0.6)]"></span>
+          <span className="text-[10px] font-bold">GAS: 0.01 gwei</span>
+        </button>
       </div>
 
       {/* Global Search Component */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { generateProjectAI } from "../lib/gemini";
 import { AgunnayaDatabase, BASE_PRICE, SLOPE } from "../lib/db";
 import { Token, WalletState } from "../types";
@@ -56,6 +56,14 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
   const [lastSaved, setLastSaved] = useState<number | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error" | "offline">("idle");
 
+  // Keep references to the latest values so the interval doesn't reset when typing
+  const latestStateRef = useRef({ aiPrompt, aiProjectType, aiResult, deployedAddress, deployStep });
+  const lastSavedStateStrRef = useRef<string>("");
+
+  useEffect(() => {
+    latestStateRef.current = { aiPrompt, aiProjectType, aiResult, deployedAddress, deployStep };
+  }, [aiPrompt, aiProjectType, aiResult, deployedAddress, deployStep]);
+
   // Session Recovery on Mount / Auth state load
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -72,6 +80,17 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
             if (data.deployedAddress) setDeployedAddress(data.deployedAddress);
             if (data.deployStep) setDeployStep(data.deployStep);
             if (data.updatedAt) setLastSaved(data.updatedAt);
+            
+            // Set initial saved state to prevent immediate auto-save trigger on load
+            const initialStateStr = JSON.stringify({
+              aiPrompt: data.prompt || "",
+              aiProjectType: data.projectType || "token",
+              aiResult: data.aiResult || null,
+              deployedAddress: data.deployedAddress || null,
+              deployStep: data.deployStep || "idle"
+            });
+            lastSavedStateStrRef.current = initialStateStr;
+            
             setSaveStatus("saved");
             addTerminalLog("success", "CLOUD RECOVERY: Restored your last active AI Builder session state from Firestore.");
           } else {
@@ -89,7 +108,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
     return () => unsubscribe();
   }, []);
 
-  // Auto-saver running every 30 seconds
+  // Optimized Auto-saver running every 30 seconds
   useEffect(() => {
     const timer = setInterval(async () => {
       const user = auth.currentUser;
@@ -98,8 +117,24 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
         return;
       }
 
+      const { aiPrompt: currentPrompt, aiProjectType: currentType, aiResult: currentResult, deployedAddress: currentAddr, deployStep: currentStep } = latestStateRef.current;
+
       // Only save if we have some content
-      if (!aiPrompt.trim() && !aiResult) {
+      if (!currentPrompt.trim() && !currentResult) {
+        return;
+      }
+
+      // Check if state actually changed to avoid spamming Firestore
+      const currentStateObj = {
+        aiPrompt: currentPrompt,
+        aiProjectType: currentType,
+        aiResult: currentResult,
+        deployedAddress: currentAddr,
+        deployStep: currentStep
+      };
+      const currentStateStr = JSON.stringify(currentStateObj);
+      if (currentStateStr === lastSavedStateStrRef.current) {
+        // No modifications, skip write
         return;
       }
 
@@ -108,14 +143,15 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
         const docRef = doc(db, "sessions", user.uid);
         await setDoc(docRef, {
           id: user.uid,
-          prompt: aiPrompt,
-          projectType: aiProjectType,
-          aiResult: aiResult || null,
-          deployedAddress: deployedAddress || null,
-          deployStep: deployStep || "idle",
+          prompt: currentPrompt,
+          projectType: currentType,
+          aiResult: currentResult || null,
+          deployedAddress: currentAddr || null,
+          deployStep: currentStep || "idle",
           updatedAt: Date.now()
         }, { merge: true });
 
+        lastSavedStateStrRef.current = currentStateStr;
         setLastSaved(Date.now());
         setSaveStatus("saved");
       } catch (err) {
@@ -125,7 +161,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
     }, 30000);
 
     return () => clearInterval(timer);
-  }, [aiPrompt, aiProjectType, aiResult, deployedAddress, deployStep]);
+  }, []);
 
   // Token Launchpad State
   const [tokenName, setTokenName] = useState("");
