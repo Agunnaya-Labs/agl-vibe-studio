@@ -116,7 +116,7 @@ export default function AGLCreditsPage({
       const [rate, totalBurnedRaw, tokenAddr] = await Promise.all([
         contract.creditsPerAGL().catch(() => 100n), // fallback to 100 credits per AGL
         contract.totalAGLBurned().catch(() => 0n),
-        contract.aglToken().catch(() => "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0")
+        contract.aglToken().catch(() => "0xea1221b4d80a89bd8c75248fae7c176bd1854698")
       ]);
 
       setCreditsPerAgl(Number(rate));
@@ -129,7 +129,7 @@ export default function AGLCreditsPage({
       // Fallback
       setCreditsPerAgl(100);
       setTotalProtocolBurned("42,500");
-      setAglTokenAddress("0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0");
+      setAglTokenAddress("0xea1221b4d80a89bd8c75248fae7c176bd1854698");
       setLoadingStats(false);
       addLocalLog("warn", "Using offline fallback values. Could not query Base Mainnet RPC.");
     }

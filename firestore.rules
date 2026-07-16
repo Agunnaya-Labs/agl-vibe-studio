@@ -206,6 +206,13 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // AI BUILDER SESSIONS COLLECTION
+    match /sessions/{id} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && isValidId(id);
+      allow delete: if isSignedIn() && (isAdmin() || request.auth.uid == id);
+    }
+
     // TEST COLLECTION
     match /test/{id} {
       allow read: if true;

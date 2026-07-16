@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { NFTCollection, WalletState, NFTItem } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
+import IPFSUploader from "../components/IPFSUploader";
 import { Disc, Image, Sparkles, CheckCircle, Tag, Settings, Users, Plus, ShieldCheck } from "lucide-react";
 
 interface NFTStudioPageProps {
@@ -241,14 +242,12 @@ export default function NFTStudioPage({ wallet, collections, onRefreshNFTs, addT
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">Artwork / Metadata Image URL (Optional)</label>
-              <input
-                id="nft-banner-input"
-                type="url"
-                value={bannerUrl}
-                onChange={(e) => setBannerUrl(e.target.value)}
-                placeholder="https://images.unsplash.com/... or IPFS link"
-                className="w-full bg-zinc-950 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none font-mono"
+              <IPFSUploader
+                onUploadSuccess={(url) => setBannerUrl(url)}
+                showToast={showToast}
+                addTerminalLog={addTerminalLog}
+                label="Collection Artwork (Pinned to IPFS)"
+                placeholderUrl={bannerUrl}
               />
             </div>
 

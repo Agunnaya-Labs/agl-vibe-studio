@@ -49,6 +49,10 @@ export default function AIAssistantSidebar({
         return;
       }
 
+      if (currentCredits < 20) {
+        showToast("⚠️ Low computational credits remaining. Top up your AGL credits soon to prevent future AI failures!", "info");
+      }
+
       // Deduct 5 credits
       const updatedWallet: WalletState = {
         ...wallet,

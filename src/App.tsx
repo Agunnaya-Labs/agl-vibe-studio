@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { HelmetProvider, Helmet } from "react-helmet-async";
 import { User, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
-import { auth } from "./lib/firebase";
+import { auth, db } from "./lib/firebase";
+import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import WalletModal from "./components/WalletModal";
@@ -20,6 +21,7 @@ import GameFiPage from "./pages/GameFiPage";
 import AgentStudioPage from "./pages/AgentStudioPage";
 import DeFiPage from "./pages/DeFiPage";
 import AGLCreditsPage from "./pages/AGLCreditsPage";
+import GasDashboardPage from "./pages/GasDashboardPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import AdminPanelPage from "./pages/AdminPanelPage";
 import ReferralPage from "./pages/ReferralPage";
@@ -131,7 +133,30 @@ export default function App() {
       }
     }
 
-    return () => unsubscribe();
+    // 3. Set up Firestore real-time listener for activities
+    const activitiesQuery = query(
+      collection(db, "activities"),
+      orderBy("timestamp", "desc"),
+      limit(50)
+    );
+    const unsubscribeActivities = onSnapshot(activitiesQuery, (snapshot) => {
+      const activeList: Activity[] = [];
+      snapshot.forEach((doc) => {
+        activeList.push(doc.data() as Activity);
+      });
+      if (activeList.length > 0) {
+        const sorted = activeList.sort((a, b) => b.timestamp - a.timestamp);
+        setActivities(sorted);
+        localStorage.setItem("agl_activities", JSON.stringify(sorted));
+      }
+    }, (error) => {
+      console.error("Error in real-time activities subscription:", error);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeActivities();
+    };
   }, []);
 
   useEffect(() => {
@@ -218,7 +243,7 @@ export default function App() {
       let aglBalance = 0;
       try {
         const aglTokenContract = new ethers.Contract(
-          "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0", 
+          "0xea1221b4d80a89bd8c75248fae7c176bd1854698", 
           ["function balanceOf(address) external view returns (uint256)"], 
           baseProvider
         );
@@ -267,11 +292,11 @@ export default function App() {
 
     if (typeof window !== "undefined" && (window as any).ethereum && (type === "metamask" || type === "coinbase" || type === "walletconnect")) {
       try {
-        const browserProvider = new ethers.BrowserProvider((window as any).ethereum);
-        const accounts = await browserProvider.send("eth_requestAccounts", []);
+        // Explicit request using standard eth_requestAccounts
+        const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
         if (accounts && accounts.length > 0) {
           address = accounts[0];
-          addTerminalLog("info", `WALLET_CONNECT: Wallet account requested via MetaMask. Address: ${address}`);
+          addTerminalLog("success", `WALLET_CONNECT: Wallet account linked successfully via MetaMask / Injected Provider: ${address}`);
         }
       } catch (err: any) {
         showToast("Injected wallet connection failed. Connecting mock wallet instead.", "info");
@@ -297,7 +322,7 @@ export default function App() {
       // Query AGL balance
       try {
         const aglTokenContract = new ethers.Contract(
-          "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0", 
+          "0xea1221b4d80a89bd8c75248fae7c176bd1854698", 
           ["function balanceOf(address) external view returns (uint256)"], 
           baseProvider
         );
@@ -471,6 +496,13 @@ export default function App() {
           image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80",
           url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=agl-credits"
         };
+      case "gas-dashboard":
+        return {
+          title: "Paymaster Gas Sponsorship Pad | Agunnaya Labs Studio",
+          description: "Request free developer gas allowances and monitor Base L2 paymaster statistics.",
+          image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=gas-dashboard"
+        };
       default:
         return {
           title: "Agunnaya Labs Studio - High Performance Web3 Developer Studio",
@@ -616,6 +648,15 @@ export default function App() {
             addTerminalLog={addTerminalLog}
             showToast={showToast}
             setWalletState={setWallet}
+          />
+        );
+      case "gas-dashboard":
+        return (
+          <GasDashboardPage
+            wallet={wallet}
+            onRefreshWallet={refreshAllData}
+            addTerminalLog={addTerminalLog}
+            showToast={showToast}
           />
         );
       case "gdrive":
