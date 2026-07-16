@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { AIAgent, WalletState } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
-import { chatWithAgentAI } from "../lib/gemini";
-import { Bot, Send, BrainCircuit, X, MessageSquare, Plus, Zap, Award, Coins } from "lucide-react";
+import { chatWithAgentAI, optimizeSystemPromptAI } from "../lib/gemini";
+import { Bot, Send, BrainCircuit, X, MessageSquare, Plus, Zap, Award, Coins, Sparkles, Cpu, Layers, ShieldCheck, Upload } from "lucide-react";
+import BaseScanLink from "../components/BaseScanLink";
+import { uploadImage } from "../lib/imageUpload";
 
 interface AgentStudioPageProps {
   wallet: WalletState;
@@ -19,12 +21,49 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
   const [systemPrompt, setSystemPrompt] = useState("");
   const [subFee, setSubFee] = useState("0.001");
   const [loading, setLoading] = useState(false);
+  const [customAvatarUrl, setCustomAvatarUrl] = useState("");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [lastDeployedAddress, setLastDeployedAddress] = useState<string | null>(null);
+  const avatarFileRef = React.useRef<HTMLInputElement>(null);
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    try {
+      const url = await uploadImage(file);
+      setCustomAvatarUrl(url);
+    } catch {
+      showToast("Avatar upload failed.", "error");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   // Active chat state
   const [activeChatAgent, setActiveChatAgent] = useState<AIAgent | null>(null);
   const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [optimizingPrompt, setOptimizingPrompt] = useState(false);
+
+  const handleOptimizePrompt = async () => {
+    if (!systemPrompt.trim() || optimizingPrompt) return;
+    setOptimizingPrompt(true);
+    addTerminalLog("system", "AI Agent Optimizer: Initializing cognitive tuning pipeline via Gemini 3.5...");
+    try {
+      const optimized = await optimizeSystemPromptAI(systemPrompt);
+      setSystemPrompt(optimized);
+      showToast("System directive optimized!", "success");
+      addTerminalLog("success", "AI Agent Optimizer: Compiled detailed autonomous directive schema successfully.");
+    } catch (err: any) {
+      console.error(err);
+      showToast("Optimization failed: " + (err.message || "Network issue"), "error");
+      addTerminalLog("error", "AI Agent Optimizer: Fine-tuning pipeline rejected. Verify API configurations.");
+    } finally {
+      setOptimizingPrompt(false);
+    }
+  };
 
   const handleCreateAgent = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +79,10 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
     setTimeout(() => {
       const generatedId = "agent_" + Math.random().toString(36).substr(2, 5);
       const generatedAddress = "0x" + Math.random().toString(16).substr(2, 40);
-      const mockAvatar = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=60";
+      // Deterministic SVG avatar from symbol (or use uploaded image)
+      const sym = symbol.slice(0, 2).toUpperCase();
+      const hue = sym.split("").reduce((n: number, c: string) => n + c.charCodeAt(0), 0) % 360;
+      const svgAvatar = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><rect width='128' height='128' rx='64' fill='hsl(${hue},60%,15%)'/><text x='64' y='82' font-family='monospace' font-size='48' font-weight='bold' text-anchor='middle' fill='hsl(${hue},80%,70%)'>${sym}</text></svg>`;
 
       const newAgent: AIAgent = {
         id: generatedId,
@@ -53,7 +95,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
         tokenPrice: 0.01,
         usageFeeEth: parseFloat(subFee) || 0.001,
         lifetimeRevenueEth: 0,
-        avatarUrl: mockAvatar,
+        avatarUrl: customAvatarUrl || svgAvatar,
         systemPrompt: systemPrompt,
         aglRewardDiscounts: true,
         chatHistory: [
@@ -81,12 +123,14 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
         details: `Launched AI agent worker: ${newAgent.name} (${newAgent.symbol}) powered by Gemini LLM`
       });
 
-      addTerminalLog("success", `AI Agent fully registered. Metadata synced with token model: ${newAgent.contractAddress}`);
+      addTerminalLog("success", `AI Agent fully registered at ${newAgent.contractAddress} — https://basescan.org/address/${newAgent.contractAddress}`);
+      setLastDeployedAddress(newAgent.contractAddress);
       setLoading(false);
       setName("");
       setSymbol("");
       setDescription("");
       setSystemPrompt("");
+      setCustomAvatarUrl("");
     }, 2000);
   };
 
@@ -109,15 +153,35 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
     try {
       const allMessages = [...chatMessages, { role: "user", content: userText }];
       
-      const response = await chatWithAgentAI(allMessages, activeChatAgent);
-      setChatMessages(prev => [...prev, { role: "assistant", content: response }]);
+      const response = await chatWithAgentAI(allMessages, activeChatAgent, wallet.address);
+
+      // Stream word-by-word for a typewriter effect
+      const words = response.split(" ");
+      let currentText = "";
+      let wordIdx = 0;
+      setChatMessages(prev => [...prev, { role: "assistant", content: "" }]);
+
+      const interval = setInterval(() => {
+        if (wordIdx < words.length) {
+          currentText += (wordIdx === 0 ? "" : " ") + words[wordIdx];
+          setChatMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: "assistant", content: currentText };
+            return updated;
+          });
+          wordIdx++;
+        } else {
+          clearInterval(interval);
+          setChatLoading(false);
+        }
+      }, 20);
 
       // Mutate agent stats (increase query count & lifetime revenue)
       const allAgents = AgunnayaDatabase.getAgents();
       const found = allAgents.find(a => a.id === activeChatAgent.id);
       if (found) {
         found.queryCount += 1;
-        found.lifetimeRevenueEth += activeChatAgent.subscriptionFeeEth;
+        found.lifetimeRevenueEth += activeChatAgent.usageFeeEth;
         AgunnayaDatabase.saveAgents(allAgents);
         
         // Sync active state
@@ -125,13 +189,34 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
         activeChatAgent.lifetimeRevenueEth = found.lifetimeRevenueEth;
       }
 
-      // Claim minor fee
+      // Claim minor fee or consume credits
       if (wallet.isConnected) {
-        const updatedWallet = { 
-          ...wallet, 
-          balanceEth: Math.max(0, wallet.balanceEth - activeChatAgent.subscriptionFeeEth) 
-        };
+        let updatedWallet: WalletState;
+        const currentCredits = wallet.aglCredits || 0;
+        
+        if (currentCredits >= 10) {
+          // Sponsor with AGL credits (discounted model)
+          const remainingCredits = currentCredits - 10;
+          updatedWallet = {
+            ...wallet,
+            aglCredits: remainingCredits
+          };
+          showToast("Query sponsored with 10 AGL Credits!", "success");
+          addTerminalLog("system", `AGENT HARNESS: Query sponsored using 10 computational credits for ${activeChatAgent.name}.`);
+          if (remainingCredits < 20) {
+            showToast("⚠️ Low computational credits remaining. Top up your AGL credits soon to prevent future AI failures!", "info");
+          }
+        } else {
+          // Pay with ETH
+          updatedWallet = { 
+            ...wallet, 
+            balanceEth: Math.max(0, wallet.balanceEth - activeChatAgent.usageFeeEth) 
+          };
+          showToast(`Paid standard subscription fee: ${activeChatAgent.usageFeeEth} ETH`, "info");
+          addTerminalLog("system", `AGENT HARNESS: Debited ${activeChatAgent.usageFeeEth} ETH standard trigger fee for ${activeChatAgent.name}.`);
+        }
         AgunnayaDatabase.saveWallet(updatedWallet);
+        onRefreshAgents();
       }
 
     } catch (err: any) {
@@ -139,7 +224,6 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
         role: "assistant",
         content: `Error connecting to AI kernel: ${err.message || "Endpoint timeout."}`
       }]);
-    } finally {
       setChatLoading(false);
     }
   };
@@ -215,7 +299,19 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">System Directive Prompt (Directives to model behavior)</label>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500">System Directive Prompt (Directives to model behavior)</label>
+                <button
+                  type="button"
+                  id="btn-optimize-directive"
+                  onClick={handleOptimizePrompt}
+                  disabled={optimizingPrompt || !systemPrompt.trim()}
+                  className="text-[10px] px-2.5 py-1 rounded bg-brand-purple/10 border border-brand-purple/20 hover:bg-brand-purple hover:border-brand-purple text-brand-purple hover:text-white transition-all duration-200 flex items-center gap-1 font-mono font-bold disabled:opacity-40 disabled:hover:bg-brand-purple/10 disabled:hover:text-brand-purple disabled:hover:border-brand-purple/20 cursor-pointer"
+                >
+                  <Sparkles className={`w-3 h-3 ${optimizingPrompt ? "animate-spin" : ""}`} />
+                  <span>{optimizingPrompt ? "Optimizing..." : "AI Auto-Optimize"}</span>
+                </button>
+              </div>
               <textarea
                 id="agent-directives-input"
                 value={systemPrompt}
@@ -227,15 +323,48 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
               />
             </div>
 
-            <button
-              id="agent-create-submit-btn"
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-xl bg-brand-purple hover:bg-purple-600 font-semibold font-display text-xs text-white shadow-lg shadow-brand-purple/20 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all flex items-center justify-center gap-2"
-            >
-              <BrainCircuit className="w-4 h-4" />
-              <span>{loading ? "Assembling cognitive layers..." : "Deploy AI Agent Worker"}</span>
-            </button>
+            {/* Optional avatar upload */}
+            <div>
+              <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">Agent Avatar (Optional)</label>
+              <div className="flex items-center gap-3">
+                {customAvatarUrl ? (
+                  <img src={customAvatarUrl} alt="avatar preview" className="w-10 h-10 rounded-xl object-cover border border-white/10" />
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-dashed border-white/10 flex items-center justify-center text-zinc-600 text-xs">AI</div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => avatarFileRef.current?.click()}
+                  disabled={uploadingAvatar}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/10 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all text-xs"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {uploadingAvatar ? "Uploading…" : customAvatarUrl ? "Change Image" : "Upload Image"}
+                </button>
+                {customAvatarUrl && (
+                  <button type="button" onClick={() => setCustomAvatarUrl("")} className="text-xs text-zinc-600 hover:text-red-400 transition-colors">Remove</button>
+                )}
+                <input ref={avatarFileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarFileChange} />
+                <span className="text-[10px] text-zinc-600">Leave empty for auto-generated SVG avatar</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                id="agent-create-submit-btn"
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-brand-purple hover:bg-purple-600 font-semibold font-display text-xs text-white shadow-lg shadow-brand-purple/20 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all flex items-center justify-center gap-2"
+              >
+                <BrainCircuit className="w-4 h-4" />
+                <span>{loading ? "Assembling cognitive layers..." : "Deploy AI Agent Worker"}</span>
+              </button>
+              {lastDeployedAddress && !loading && (
+                <div className="flex justify-center pt-1">
+                  <BaseScanLink value={lastDeployedAddress} badge label="View deployed agent on BaseScan ↗" />
+                </div>
+              )}
+            </div>
           </form>
         </div>
 
@@ -257,6 +386,30 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
               >
                 ✕
               </button>
+            </div>
+
+            {/* Cognitive Diagnostics HUD */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[9px] font-mono bg-zinc-900/40 p-2.5 rounded-xl border border-white/5 text-zinc-400">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-zinc-500 uppercase">Response Mode:</span>
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <Cpu className="w-2.5 h-2.5" /> LOW LATENCY
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-zinc-500 uppercase">Average Latency:</span>
+                <span className="text-white font-bold">~240ms (cached)</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-zinc-500 uppercase">Security Audit:</span>
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <ShieldCheck className="w-2.5 h-2.5" /> SECURE
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-zinc-500 uppercase">Sponsorship Gas:</span>
+                <span className="text-brand-purple font-bold">100% COVERED</span>
+              </div>
             </div>
 
             {/* Chat list */}

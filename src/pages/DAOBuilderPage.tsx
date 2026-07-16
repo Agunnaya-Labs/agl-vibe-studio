@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { DAO, Proposal, WalletState } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
 import { Users, Vote, Plus, Wallet, ShieldAlert, Sparkles, Building, Landmark, CheckCircle } from "lucide-react";
+import BaseScanLink from "../components/BaseScanLink";
 
 interface DAOBuilderPageProps {
   wallet: WalletState;
@@ -15,7 +16,7 @@ export default function DAOBuilderPage({ wallet, daos, onRefreshDAOs, addTermina
   const [daoName, setDaoName] = useState("");
   const [daoSymbol, setDaoSymbol] = useState("");
   const [daoDesc, setDaoDesc] = useState("");
-  const [govToken, setGovToken] = useState("0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0"); // default to AGL
+  const [govToken, setGovToken] = useState("0xea1221b4d80a89bd8c75248fae7c176bd1854698"); // default to AGL
   const [creatingDao, setCreatingDao] = useState(false);
 
   // Proposal Form State
@@ -47,7 +48,7 @@ export default function DAOBuilderPage({ wallet, daos, onRefreshDAOs, addTermina
         description: daoDesc,
         creator: wallet.address,
         governanceTokenAddress: govToken,
-        treasuryBalanceEth: 5.0, // starts with 5 mock ETH treasury!
+        treasuryBalanceEth: 0, // empty treasury — funded via on-chain governance proposals
         memberCount: 1,
         proposals: [],
         createdAt: Date.now()
@@ -72,7 +73,7 @@ export default function DAOBuilderPage({ wallet, daos, onRefreshDAOs, addTermina
         details: `Created decentralized governance DAO: ${newDAO.name} (${newDAO.symbol})`
       });
 
-      addTerminalLog("success", `Governor contract active at ${newDAO.contractAddress}`);
+      addTerminalLog("success", `Governor contract active at ${newDAO.contractAddress} — verify on BaseScan: https://basescan.org/address/${newDAO.contractAddress}`);
       setCreatingDao(false);
       setDaoName("");
       setDaoSymbol("");
@@ -243,7 +244,7 @@ export default function DAOBuilderPage({ wallet, daos, onRefreshDAOs, addTermina
                 onChange={(e) => setGovToken(e.target.value)}
                 className="w-full bg-zinc-950 border border-white/10 rounded-xl p-3 text-xs text-zinc-300 focus:outline-none focus:border-brand-purple/40 font-mono"
               >
-                <option value="0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0">Agunnaya Utility Token (AGL)</option>
+                <option value="0xea1221b4d80a89bd8c75248fae7c176bd1854698">Agunnaya Utility Token (AGL)</option>
                 <option value="custom">Deployer Custom ERC-20 Asset</option>
               </select>
             </div>

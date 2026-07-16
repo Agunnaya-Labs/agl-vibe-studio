@@ -183,6 +183,20 @@
     "/referrals/{ownerAddress}": {
       "schema": { "$ref": "#/entities/ReferralRecord" },
       "description": "Active affiliate invite links"
+    },
+    "/sessions/{id}": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "prompt": { "type": "string" },
+          "projectType": { "type": "string" },
+          "updatedAt": { "type": "number" },
+          "aiResult": { "type": "object" }
+        },
+        "required": ["id", "prompt", "projectType", "updatedAt"]
+      },
+      "description": "Real-time backed developer session history for AI Builder state recovery"
     }
   }
 }
