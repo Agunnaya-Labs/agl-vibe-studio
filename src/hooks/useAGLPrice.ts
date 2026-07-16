@@ -17,7 +17,7 @@ export interface AGLPriceData {
   aglPerEth: number;
 }
 
-const AGL_ADDRESS = "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0";
+const AGL_TOKEN_ADDRESS = "0xea1221b4d80a89bd8c75248fae7c176bd1854698";
 // Approximate ETH/USD rate (hardcoded fallback; swap for a live oracle if desired)
 const ETH_USD_APPROX = 3400;
 
@@ -25,7 +25,7 @@ function computePriceData(): AGLPriceData | null {
   try {
     const tokens = AgunnayaDatabase.getTokens();
     const agl = tokens.find(
-      (t) => t.address.toLowerCase() === AGL_ADDRESS.toLowerCase() || t.symbol === "AGL"
+      (t) => t.address.toLowerCase() === AGL_TOKEN_ADDRESS.toLowerCase() || t.symbol === "AGL"
     );
     if (!agl) return null;
 
