@@ -83,9 +83,12 @@ export default function LandingPage({ onLaunchApp }: LandingPageProps) {
       {/* Navigation Header */}
       <nav className="relative z-10 max-w-7xl mx-auto px-6 h-20 flex items-center justify-between border-b border-white/10">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0052FF] to-[#A855F7] flex items-center justify-center font-bold text-white text-xs shadow-lg shadow-blue-500/20 border border-white/10">
-            AL
-          </div>
+          <img
+            src="/src/assets/images/agunnaya_logo_1782747905258.jpg"
+            alt="AL"
+            className="w-8 h-8 rounded-xl object-cover shadow-lg shadow-blue-500/20 border border-white/10"
+            referrerPolicy="no-referrer"
+          />
           <span className="font-display font-bold text-xl tracking-tight">
             Agunnaya <span className="bg-gradient-to-r from-[#0052FF] to-[#A855F7] bg-clip-text text-transparent">Labs</span>
           </span>
@@ -134,20 +137,14 @@ export default function LandingPage({ onLaunchApp }: LandingPageProps) {
         </div>
 
         {/* Premium 3D Workspace Banner Showcase */}
-        <div className="relative mt-12 mx-auto max-w-4xl rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(139,92,246,0.12)] bg-gradient-to-b from-zinc-900 to-zinc-950 p-1.5 group">
+        <div className="relative mt-12 mx-auto max-w-4xl rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(139,92,246,0.12)] bg-zinc-950/40 p-1.5 group">
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent z-10 pointer-events-none"></div>
-          <div className="relative w-full h-64 md:h-80 rounded-xl bg-gradient-to-br from-[#0052FF]/20 to-[#A855F7]/20 flex items-center justify-center overflow-hidden group-hover:scale-[1.01] transition-transform duration-700">
-            <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_30%,rgba(0,82,255,0.1)_50%,transparent_70%)] animate-pulse"></div>
-            <div className="relative flex flex-col items-center gap-4 z-10">
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-gradient-to-br from-[#0052FF] to-[#A855F7] flex items-center justify-center text-4xl md:text-5xl font-bold text-white shadow-[0_0_40px_rgba(0,82,255,0.5)]">
-                A
-              </div>
-              <div className="text-center">
-                <p className="text-lg md:text-2xl font-bold">Agunnaya Labs Studio</p>
-                <p className="text-sm md:text-base text-zinc-400 mt-1">AI Web3 Creation Engine</p>
-              </div>
-            </div>
-          </div>
+          <img
+            src="/src/assets/images/agunnaya_banner_1782747920246.jpg"
+            alt="Agunnaya Labs Studio 3D Developer Workspace"
+            className="w-full h-auto rounded-xl object-cover transition-transform duration-700 group-hover:scale-[1.01]"
+            referrerPolicy="no-referrer"
+          />
         </div>
 
         {/* Live Chain stats widget */}
@@ -160,40 +157,6 @@ export default function LandingPage({ onLaunchApp }: LandingPageProps) {
           ))}
         </div>
       </header>
-
-      {/* Social Proof - Token & Market Data */}
-      <section className="max-w-7xl mx-auto px-6 py-12 border-t border-white/5">
-        <div className="bg-gradient-to-r from-[#0052FF]/10 to-[#A855F7]/10 rounded-2xl border border-white/5 p-8 md:p-12">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div className="space-y-2">
-              <p className="text-2xl md:text-3xl font-mono font-bold text-[#0052FF]">$15.71M</p>
-              <p className="text-xs text-zinc-400">AGL Token Market Cap</p>
-              <p className="text-[10px] text-zinc-500 mt-2">CHONK9K on Uniswap V4 Base</p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-2xl md:text-3xl font-mono font-bold text-[#A855F7]">$45.2M+</p>
-              <p className="text-xs text-zinc-400">Total Value Locked</p>
-              <p className="text-[10px] text-zinc-500 mt-2">Across all deployed protocols</p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-2xl md:text-3xl font-mono font-bold text-emerald-400">24.8K+</p>
-              <p className="text-xs text-zinc-400">Smart Contracts Deployed</p>
-              <p className="text-[10px] text-zinc-500 mt-2">All audited and verified</p>
-            </div>
-          </div>
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 text-xs">
-            <a href="https://dextools.io" target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-white transition-all flex items-center gap-2">
-              <Globe className="w-3.5 h-3.5" />
-              View on DexTools
-            </a>
-            <span className="text-zinc-600">•</span>
-            <a href="#" className="text-zinc-400 hover:text-white transition-all flex items-center gap-2">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Audited Contracts
-            </a>
-          </div>
-        </div>
-      </section>
 
       {/* Bento Grid Features Showcase */}
       <section id="features-section" className="max-w-7xl mx-auto px-6 py-20 border-t border-white/5">
@@ -341,9 +304,12 @@ export default function LandingPage({ onLaunchApp }: LandingPageProps) {
           {/* Brand Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0052FF] to-[#A855F7] flex items-center justify-center font-bold text-white text-xs border border-white/10">
-                AL
-              </div>
+              <img
+                src="/src/assets/images/agunnaya_logo_1782747905258.jpg"
+                alt="AL"
+                className="w-8 h-8 rounded-lg object-cover border border-white/10"
+                referrerPolicy="no-referrer"
+              />
               <span className="font-display font-bold text-lg tracking-tight">
                 Agunnaya <span className="text-brand-purple">Labs</span>
               </span>

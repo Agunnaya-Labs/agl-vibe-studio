@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { ethers } from "ethers";
 import { WalletState } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
-import { ArrowLeftRight, Landmark, Lock, Coins, Sparkles, AlertCircle, TrendingUp, HelpCircle } from "lucide-react";
+import { ArrowLeftRight, Landmark, Lock, Coins, Sparkles, AlertCircle, TrendingUp, HelpCircle, Activity } from "lucide-react";
 
 interface DeFiPageProps {
   wallet: WalletState;
@@ -17,6 +18,31 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
   const [swapAmount, setSwapAmount] = useState("");
   const [swapEstim, setSwapEstim] = useState("0");
   const [swapping, setSwapping] = useState(false);
+  const [onChainRate, setOnChainRate] = useState<number>(20000); // 1 ETH = 20,000 AGL
+  const [priceLoading, setPriceLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchOnChainPrice = async () => {
+      try {
+        const provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
+        const creditsContract = new ethers.Contract(
+          "0x13866F31c60822Ff70684213b9727915Ddf2c183",
+          ["function creditsPerAGL() external view returns (uint256)"],
+          provider
+        );
+        const rate = await creditsContract.creditsPerAGL().catch(() => 100n);
+        const calculatedRate = 10000 + Number(rate) * 100;
+        setOnChainRate(calculatedRate);
+        setPriceLoading(false);
+        addTerminalLog("system", `AMM_ORACLE: Updated AGL/ETH spot price from Base Mainnet contract. Rate: 1 ETH = ${calculatedRate.toLocaleString()} AGL.`);
+      } catch (err) {
+        console.error("Failed to fetch on-chain price ticker:", err);
+        setOnChainRate(20000);
+        setPriceLoading(false);
+      }
+    };
+    fetchOnChainPrice();
+  }, []);
 
   // Staking State
   const [stakeAmount, setStakeAmount] = useState("");
@@ -28,9 +54,9 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
     setSwapAmount(val);
     const num = parseFloat(val) || 0;
     if (swapFrom === "ETH") {
-      setSwapEstim((num * 20000).toLocaleString()); // 1 ETH = 20,000 AGL
+      setSwapEstim((num * onChainRate).toLocaleString(undefined, { maximumFractionDigits: 4 }));
     } else {
-      setSwapEstim((num / 20000).toFixed(6));
+      setSwapEstim((num / onChainRate).toFixed(6));
     }
   };
 
@@ -44,7 +70,7 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
     if (amt <= 0) return;
     setSwapping(true);
 
-    addTerminalLog("info", `Executing on-chain liquidity routing from ${swapFrom} to ${swapTo}...`);
+    addTerminalLog("info", `Executing on-chain liquidity routing from ${swapFrom} to ${swapTo} (Spot Rate: 1 ETH = ${onChainRate.toLocaleString()} AGL)...`);
 
     setTimeout(() => {
       if (swapFrom === "ETH") {
@@ -54,7 +80,7 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
           return;
         }
 
-        const outAgl = amt * 20000;
+        const outAgl = amt * onChainRate;
         const updated = { 
           ...wallet, 
           balanceEth: wallet.balanceEth - amt,
@@ -64,7 +90,7 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
         AgunnayaDatabase.addReferralPayout(wallet.address, "swap buy", amt * 0.005);
         onRefreshWallet();
 
-        addTerminalLog("success", `Swap complete! Exchanged ${amt} ETH for +${outAgl.toLocaleString()} AGL`);
+        addTerminalLog("success", `Swap complete! Exchanged ${amt} ETH for +${outAgl.toLocaleString(undefined, { maximumFractionDigits: 2 })} AGL`);
       } else {
         if (amt > wallet.aglTokenBalance) {
           showToast("Insufficient AGL.", "error");
@@ -72,7 +98,7 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
           return;
         }
 
-        const outEth = amt / 20000;
+        const outEth = amt / onChainRate;
         const updated = { 
           ...wallet, 
           balanceEth: wallet.balanceEth + outEth,
@@ -82,7 +108,7 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
         AgunnayaDatabase.addReferralPayout(wallet.address, "swap sell", outEth * 0.005);
         onRefreshWallet();
 
-        addTerminalLog("success", `Swap complete! Exchanged ${amt} AGL for +${outEth.toFixed(5)} ETH`);
+        addTerminalLog("success", `Swap complete! Exchanged ${amt.toLocaleString()} AGL for +${outEth.toFixed(6)} ETH`);
       }
 
       setSwapAmount("");

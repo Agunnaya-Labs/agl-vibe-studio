@@ -49,7 +49,7 @@ export function getEthReturnForTokens(currentSupply: number, tokensToSell: numbe
 // INITIAL SEED DATA
 const SEED_TOKENS: Token[] = [
   {
-    address: "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0",
+    address: "0xea1221b4d80a89bd8c75248fae7c176bd1854698",
     name: "Agunnaya Utility Token",
     symbol: "AGL",
     description: "The official utility token of Agunnaya Labs Studio. Used to unlock premium templates, pay for autonomous AI Agent triggers at a discount, secure governance rights, and stake for premium yield.",
@@ -163,7 +163,7 @@ const SEED_DAOS: DAO[] = [
     symbol: "BBG",
     description: "A community DAO designed to fund open-source development tools, public goods, and meme generators exclusively on Base. Supported by Agunnaya Labs multi-sig.",
     creator: "0xBBGCreator",
-    governanceTokenAddress: "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0", // AGL token as gov token
+    governanceTokenAddress: "0xea1221b4d80a89bd8c75248fae7c176bd1854698", // AGL token as gov token
     treasuryBalanceEth: 25.5,
     memberCount: 142,
     proposals: [
@@ -269,13 +269,13 @@ const SEED_AGENTS: AIAgent[] = [
 ];
 
 const SEED_STAKING: StakingPool[] = [
-  { id: "s-1", tokenName: "Agunnaya Labs Token", tokenSymbol: "AGL", tokenAddress: "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0", apr: 38.5, tvlEth: 12.8, stakedBalance: 0, earnedRewards: 0, lockPeriodDays: 7 },
+  { id: "s-1", tokenName: "Agunnaya Labs Token", tokenSymbol: "AGL", tokenAddress: "0xea1221b4d80a89bd8c75248fae7c176bd1854698", apr: 38.5, tvlEth: 12.8, stakedBalance: 0, earnedRewards: 0, lockPeriodDays: 7 },
   { id: "s-2", tokenName: "Meme Pad Chad", tokenSymbol: "CHAD", tokenAddress: "0x89ab...bcde", apr: 82.0, tvlEth: 4.15, stakedBalance: 0, earnedRewards: 0, lockPeriodDays: 0 },
   { id: "s-3", tokenName: "Base AI Core", tokenSymbol: "BAIC", tokenAddress: "0x3456...ef01", apr: 48.0, tvlEth: 6.42, stakedBalance: 0, earnedRewards: 0, lockPeriodDays: 14 }
 ];
 
 const SEED_ACTIVITIES: Activity[] = [
-  { id: "a-1", type: "create", tokenSymbol: "AGL", tokenAddress: "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0", user: "0x479596943e70316A0d893De1876EBeA1Ea8E4D5B", amount: 1000000000, ethValue: 0, timestamp: Date.now() - 30 * 24 * 60 * 60 * 1000, details: "Platform genesis launch of Agunnaya Labs Utility Token" },
+  { id: "a-1", type: "create", tokenSymbol: "AGL", tokenAddress: "0xea1221b4d80a89bd8c75248fae7c176bd1854698", user: "0x479596943e70316A0d893De1876EBeA1Ea8E4D5B", amount: 1000000000, ethValue: 0, timestamp: Date.now() - 30 * 24 * 60 * 60 * 1000, details: "Platform genesis launch of Agunnaya Labs Utility Token" },
   { id: "a-2", type: "buy", tokenSymbol: "CHAD", tokenAddress: "0x89ab...bcde", user: "0x9821...5523", amount: 12000, ethValue: 0.015, timestamp: Date.now() - 1 * 24 * 60 * 60 * 1000, details: "Bought 12,000 CHAD tokens on the bonding curve" },
   { id: "a-3", type: "mint", tokenSymbol: "AGK", tokenAddress: "0x7890...cdef", user: "0x9821...5523", amount: 1, ethValue: 0.05, timestamp: Date.now() - 20 * 24 * 60 * 60 * 1000, details: "Minted Agunnaya Genesis Key #1 access NFT" },
   { id: "a-4", type: "vote", tokenSymbol: "BBG", tokenAddress: "0xdad1...eade", user: "0x4795...4D5B", amount: 50000, ethValue: 0, timestamp: Date.now() - 12 * 24 * 60 * 60 * 1000, details: "Voted FOR Proposal #2 'AA integration' with 50,000 voting weight" }
@@ -284,11 +284,12 @@ const SEED_ACTIVITIES: Activity[] = [
 const DEFAULT_WALLET: WalletState = {
   isConnected: false,
   address: "",
-  balanceEth: 10.0, // starts with 10 mock ETH for testing the platform!
+  balanceEth: 0.0, // starts at 0.0 until on-chain connect
   walletType: null,
   isSmartAccount: false,
-  sponsoredGasEth: 0.05, // 0.05 sponsored gas for AA smart accounts
-  aglTokenBalance: 250 // starts with 250 mock AGL token balance!
+  sponsoredGasEth: 0.0,
+  aglTokenBalance: 0, // starts at 0 until on-chain connect
+  aglCredits: 0
 };
 
 // PERSISTENCE WRAPPER
