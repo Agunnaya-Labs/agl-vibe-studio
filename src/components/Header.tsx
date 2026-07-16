@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { Wallet, Coins, RefreshCw, Layers, Database, Search, X, Bot, Palette, Cloud, CloudOff, Zap } from "lucide-react";
+import { Wallet, Coins, RefreshCw, Layers, Database, Search, X, Bot, Palette, Cloud, CloudOff, TrendingUp } from "lucide-react";
 import { WalletState, Token, NFTCollection, AIAgent } from "../types";
 import CreditsWidget from "./CreditsWidget";
+import { useAGLPrice } from "../hooks/useAGLPrice";
 
 interface HeaderProps {
   wallet: WalletState;
@@ -42,8 +43,8 @@ export default function Header({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [logoHovered, setLogoHovered] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const aglPrice = useAGLPrice();
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -103,24 +104,12 @@ export default function Header({
     <header id="app-header" className="sticky top-0 z-40 w-full h-16 border-b border-white/10 bg-[#050505]/50 backdrop-blur-md px-6 flex items-center justify-between shrink-0">
       {/* Search / Network info on desktop */}
       <div className="flex items-center gap-4">
-        {/* Immersive UI Brand Title with Interactive Logo */}
-        <div className="hidden lg:flex items-center gap-3 group cursor-pointer" 
-          onMouseEnter={() => setLogoHovered(true)}
-          onMouseLeave={() => setLogoHovered(false)}>
-          <div className="relative flex items-center gap-2">
-            <img 
-              src="/assets/images/logo-main.png" 
-              alt="Agunnaya Labs" 
-              className={`w-6 h-6 transition-all duration-300 ${logoHovered ? 'scale-110 drop-shadow-[0_0_8px_rgba(0,82,255,0.6)]' : 'scale-100'}`}
-            />
-            {logoHovered && (
-              <Zap className="absolute w-4 h-4 text-[#0052FF] animate-pulse" style={{animation: 'pulse 1s infinite'}} />
-            )}
-          </div>
-          <h1 className={`text-xs font-semibold tracking-wider transition-all duration-300 ${logoHovered ? 'text-white' : 'text-white/80'} uppercase`}>
+        {/* Immersive UI Brand Title */}
+        <div className="hidden lg:flex items-center gap-3">
+          <h1 className="text-xs font-semibold tracking-wider text-white/80 uppercase">
             AGUNNAYA LABS STUDIO <span className="text-[#0052FF] font-bold">v2.4</span>
           </h1>
-          <div className={`h-4 w-px transition-all duration-300 ${logoHovered ? 'bg-[#0052FF]/60' : 'bg-white/10'}`}></div>
+          <div className="h-4 w-px bg-white/10"></div>
         </div>
 
         {/* Network Switcher */}
@@ -324,18 +313,34 @@ export default function Header({
             <button
               id="faucet-button"
               onClick={onFundWallet}
-              title="Get free mock ETH and AGL for testing"
+              title="Synchronize balances with Base Mainnet"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-mono font-medium transition-all"
             >
               <RefreshCw className="w-3.5 h-3.5 animate-spin-slow" />
-              <span>Faucet (+1 ETH)</span>
+              <span>Sync Wallet</span>
             </button>
 
-            {/* AGL Balance display */}
+            {/* AGL Balance + live price display */}
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#0052FF]/10 border border-[#0052FF]/30 rounded-lg text-xs font-mono shadow-[0_0_15px_rgba(0,82,255,0.1)]">
               <Coins className="w-4 h-4 text-[#0052FF]" />
               <span className="text-zinc-400">AGL:</span>
               <span className="text-white font-bold">{wallet.aglTokenBalance.toLocaleString()}</span>
+              {aglPrice && (
+                <span
+                  className="hidden lg:flex items-center gap-0.5 text-emerald-400 text-[9px] font-bold border-l border-white/10 pl-1.5 ml-0.5"
+                  title={`Live AGL price: ${aglPrice.formattedPrice}`}
+                >
+                  <TrendingUp className="w-3 h-3" />
+                  {aglPrice.formattedPrice}
+                </span>
+              )}
+            </div>
+
+            {/* AGL Credits display */}
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-xs font-mono shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+              <Bot className="w-4 h-4 text-emerald-400 animate-pulse" />
+              <span className="text-zinc-400">Credits:</span>
+              <span className="text-white font-bold">{(wallet.aglCredits || 0).toLocaleString()}</span>
             </div>
 
             {/* ETH Balance display */}

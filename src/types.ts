@@ -25,6 +25,7 @@ export interface Token {
   vestingWeeks: number;
   referralRewardsPct: number;
   createdAt: number; // Timestamp
+  implementation?: string; // Proxy implementation address
 }
 
 export interface NFTItem {
@@ -163,6 +164,7 @@ export interface WalletState {
   isSmartAccount: boolean;
   sponsoredGasEth: number; // Mock AA gas sponsorship
   aglTokenBalance: number; // Native utility token Agunnaya Labs Token
+  aglCredits: number; // Computational credits earned via on-chain AGL burning
 }
 
 export interface Activity {

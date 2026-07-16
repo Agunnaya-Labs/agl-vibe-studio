@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { ethers } from "ethers";
 import { HelmetProvider, Helmet } from "react-helmet-async";
 import { User, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
-import { auth } from "./lib/firebase";
+import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
+import { auth, db } from "./lib/firebase";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import WalletModal from "./components/WalletModal";
@@ -18,6 +20,7 @@ import DAOBuilderPage from "./pages/DAOBuilderPage";
 import GameFiPage from "./pages/GameFiPage";
 import AgentStudioPage from "./pages/AgentStudioPage";
 import DeFiPage from "./pages/DeFiPage";
+import AGLCreditsPage from "./pages/AGLCreditsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import AdminPanelPage from "./pages/AdminPanelPage";
 import ReferralPage from "./pages/ReferralPage";
@@ -110,6 +113,28 @@ export default function App() {
       }
     });
 
+    // 3. Real-time Firestore activity subscription — keeps the activity feed live
+    //    Falls back gracefully if Firestore is not provisioned (the error is suppressed).
+    let unsubActivities: (() => void) | null = null;
+    try {
+      const actQ = query(collection(db, "activities"), orderBy("timestamp", "desc"), limit(50));
+      unsubActivities = onSnapshot(
+        actQ,
+        (snap) => {
+          if (snap.empty) return;
+          const firestoreActs = snap.docs.map((d) => d.data() as Activity);
+          setActivities((prev) => {
+            // Merge: firestoreActs take priority; keep any local-only items not yet synced
+            const localOnly = prev.filter((a) => !firestoreActs.find((fa) => fa.id === a.id));
+            return [...firestoreActs, ...localOnly].sort((a, b) => b.timestamp - a.timestamp);
+          });
+        },
+        () => { /* Firestore not provisioned — silently ignore */ }
+      );
+    } catch {
+      // onSnapshot setup failed (network or rules) — ignore
+    }
+
     // Check for referral code in URL search params
     const params = new URLSearchParams(window.location.search);
     const refCode = params.get("ref");
@@ -129,8 +154,17 @@ export default function App() {
       }
     }
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      unsubActivities?.();
+    };
   }, []);
+
+  useEffect(() => {
+    if (wallet.isConnected && wallet.address) {
+      syncWalletBalancesOnChain(wallet.address);
+    }
+  }, [wallet.isConnected, wallet.address]);
 
   const DRIVE_SCOPES = [
     "https://www.googleapis.com/auth/drive",
@@ -198,20 +232,53 @@ export default function App() {
     }
   };
 
-  const handleFundWallet = () => {
-    if (!wallet.isConnected) {
+  // Load real on-chain balances for connected wallet from Base Mainnet
+  const syncWalletBalancesOnChain = async (addr: string) => {
+    if (!addr) return;
+    try {
+      addTerminalLog("info", `SYNC: Querying native and AGL balances for ${addr.slice(0, 8)}... on Base Mainnet.`);
+      const baseProvider = new ethers.JsonRpcProvider("https://mainnet.base.org");
+      const ethBalRaw = await baseProvider.getBalance(addr);
+      const ethBalance = parseFloat(ethers.formatEther(ethBalRaw));
+
+      let aglBalance = 0;
+      try {
+        const aglTokenContract = new ethers.Contract(
+          "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0", 
+          ["function balanceOf(address) external view returns (uint256)"], 
+          baseProvider
+        );
+        const aglBalRaw = await aglTokenContract.balanceOf(addr);
+        aglBalance = parseFloat(ethers.formatEther(aglBalRaw));
+      } catch (e) {
+        console.warn("AGL token on-chain fetch failed", e);
+      }
+
+      const currentWallet = AgunnayaDatabase.getWallet();
+      const updatedWallet: WalletState = {
+        ...currentWallet,
+        balanceEth: ethBalance,
+        aglTokenBalance: aglBalance,
+      };
+      AgunnayaDatabase.saveWallet(updatedWallet);
+      setWallet(updatedWallet);
+      refreshAllData();
+      addTerminalLog("success", `SYNC_COMPLETE: Synced Base Mainnet. Balance: ${ethBalance.toFixed(4)} ETH, ${aglBalance.toLocaleString()} AGL`);
+    } catch (err) {
+      console.error("Failed to sync on-chain balances from Base Mainnet:", err);
+      addTerminalLog("error", "SYNC_ERROR: Base Mainnet RPC connection timed out or failed.");
+    }
+  };
+
+  const handleFundWallet = async () => {
+    if (!wallet.isConnected || !wallet.address) {
       showToast("Please connect your wallet first in the header.", "error");
       return;
     }
-    const updatedWallet = {
-      ...wallet,
-      balanceEth: wallet.balanceEth + 1.0,
-      aglTokenBalance: wallet.aglTokenBalance + 5000
-    };
-    AgunnayaDatabase.saveWallet(updatedWallet);
-    setWallet(updatedWallet);
-    addTerminalLog("success", "FAUCET: Claimed +1.0 mock ETH and +5,000 mock AGL tokens onto Sepolia sandbox!");
-    refreshAllData();
+    showToast("Synchronizing with Base Mainnet...", "info");
+    addTerminalLog("info", "FAUCET_REDIRECT: Faucet claims are disabled on Base Mainnet. Querying live on-chain balances instead...");
+    await syncWalletBalancesOnChain(wallet.address);
+    showToast("Live Base Mainnet balances synchronized!", "success");
   };
 
   // Adds logs to terminal stream
@@ -219,32 +286,80 @@ export default function App() {
     setTerminalLogs(prev => [...prev, { type, text }]);
   };
 
-  const handleWalletConnect = (type: "metamask" | "coinbase" | "walletconnect" | "smart") => {
-    let mockAddr = "0x" + Math.random().toString(16).substr(2, 40);
-    if (type === "smart") {
-      mockAddr = "0xAA" + Math.random().toString(16).substr(2, 38);
+  const handleWalletConnect = async (type: "metamask" | "coinbase" | "walletconnect" | "smart") => {
+    let address = "";
+    let ethBalance = 0.0;
+    let aglBalance = 0;
+
+    if (typeof window !== "undefined" && (window as any).ethereum && (type === "metamask" || type === "coinbase" || type === "walletconnect")) {
+      try {
+        const browserProvider = new ethers.BrowserProvider((window as any).ethereum);
+        const accounts = await browserProvider.send("eth_requestAccounts", []);
+        if (accounts && accounts.length > 0) {
+          address = accounts[0];
+          addTerminalLog("info", `WALLET_CONNECT: Wallet account requested via MetaMask. Address: ${address}`);
+        }
+      } catch (err: any) {
+        showToast("Injected wallet connection failed. Connecting mock wallet instead.", "info");
+        addTerminalLog("info", `WALLET_CONNECT: Injected wallet error: ${err.message || String(err)}`);
+      }
+    }
+
+    if (!address) {
+      address = "0x" + Math.random().toString(16).substr(2, 40);
+      if (type === "smart") {
+        address = "0xAA" + Math.random().toString(16).substr(2, 38);
+      }
+      addTerminalLog("info", `WALLET_CONNECT: Injected provider not found/rejected. Generated demo address: ${address}`);
+    }
+
+    // Now query real on-chain balance using JSON-RPC provider pointing to Base Mainnet!
+    try {
+      addTerminalLog("info", "FETCH_BALANCES: Querying native and AGL balances on Base Mainnet...");
+      const baseProvider = new ethers.JsonRpcProvider("https://mainnet.base.org");
+      const ethBalRaw = await baseProvider.getBalance(address);
+      ethBalance = parseFloat(ethers.formatEther(ethBalRaw));
+
+      // Query AGL balance
+      try {
+        const aglTokenContract = new ethers.Contract(
+          "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0", 
+          ["function balanceOf(address) external view returns (uint256)"], 
+          baseProvider
+        );
+        const aglBalRaw = await aglTokenContract.balanceOf(address);
+        aglBalance = parseFloat(ethers.formatEther(aglBalRaw));
+      } catch (e) {
+        addTerminalLog("info", "FETCH_BALANCES: AGL token balance query failed on-chain.");
+        aglBalance = 0;
+      }
+    } catch (err) {
+      addTerminalLog("error", "FETCH_BALANCES: Base Mainnet RPC connection failed. Falling back to default balances.");
+      ethBalance = 0.0;
+      aglBalance = 0;
     }
 
     const newWallet: WalletState = {
       isConnected: true,
-      address: mockAddr,
-      balanceEth: type === "smart" ? 2.5 : 1.0, // smart gets extra eth for sandbox play!
-      aglTokenBalance: 50000, // starts with 50,000 AGL tokens!
+      address,
+      balanceEth: ethBalance,
+      aglTokenBalance: aglBalance,
       isSmartAccount: type === "smart",
       walletType: type,
-      sponsoredGasEth: type === "smart" ? 0.05 : 0
+      sponsoredGasEth: type === "smart" ? 0.05 : 0,
+      aglCredits: wallet.aglCredits || 500
     };
 
     AgunnayaDatabase.saveWallet(newWallet);
     setWallet(newWallet);
     setIsWalletModalOpen(false);
 
-    addTerminalLog("success", `SECURE LINK: Wallet linked successfully. Address: ${mockAddr}`);
+    addTerminalLog("success", `SECURE LINK: Wallet linked successfully. Address: ${address}. Balance: ${ethBalance.toFixed(4)} ETH, ${aglBalance.toLocaleString()} AGL`);
 
     // Process referral registration if there's an active referrer
     const activeRef = AgunnayaDatabase.getActiveReferrer();
     if (activeRef) {
-      const actualReferrer = AgunnayaDatabase.registerReferral(mockAddr, activeRef);
+      const actualReferrer = AgunnayaDatabase.registerReferral(address, activeRef);
       if (actualReferrer) {
         showToast(`Welcome! Registered under referrer 0x${actualReferrer.slice(2, 6)}...`, "success");
         addTerminalLog("success", `REFERRAL_COMPLETED: User referred successfully by 0x${actualReferrer.slice(2, 8)}...`);
@@ -254,8 +369,8 @@ export default function App() {
     AgunnayaDatabase.addActivity({
       type: "vote",
       tokenSymbol: "ETH",
-      tokenAddress: mockAddr,
-      user: mockAddr,
+      tokenAddress: address,
+      user: address,
       amount: 1,
       ethValue: 0,
       details: `Connected decentralized identity wallet (${type}) to Agunnaya Studio`
@@ -271,7 +386,8 @@ export default function App() {
       aglTokenBalance: 0,
       isSmartAccount: false,
       walletType: "metamask",
-      sponsoredGasEth: 0
+      sponsoredGasEth: 0,
+      aglCredits: 0
     };
     AgunnayaDatabase.saveWallet(freshWallet);
     setWallet(freshWallet);
@@ -291,8 +407,8 @@ export default function App() {
       return {
         title: `Trade ${selectedToken.name} (${selectedToken.symbol}) | Agunnaya Labs Studio`,
         description: `Join the dynamic bonding curve for ${selectedToken.name} (${selectedToken.symbol}). Market Cap: $${Math.floor(selectedToken.marketCap).toLocaleString()} USD. Deployed securely on Base.`,
-        image: "/assets/images/token-trading.png",
-        url: `https://agunnaya-labs.studio/?token=${selectedToken.address}`
+        image: "https://images.unsplash.com/photo-1642104704074-907c0698cbd9?auto=format&fit=crop&w=1200&q=80",
+        url: `https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?token=${selectedToken.address}`
       };
     }
 
@@ -301,85 +417,92 @@ export default function App() {
         return {
           title: "Dashboard | Agunnaya Labs Studio",
           description: "Monitor your connected Base smart accounts, token creations, active yield pools, on-chain agents, and recent studio transactions.",
-          image: "/assets/images/analytics-dashboard.png",
-          url: "https://agunnaya-labs.studio/?tab=dashboard"
+          image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=dashboard"
         };
       case "explore":
         return {
           title: "Explore Bonding Curves | Agunnaya Labs Studio",
           description: "Discover hot decentralized assets, meme tokens, and innovative utility primitives deployed across Base Mainnet and Sepolia Sandbox.",
-          image: "/assets/images/token-trading.png",
-          url: "https://agunnaya-labs.studio/?tab=explore"
+          image: "https://images.unsplash.com/photo-1642104704074-907c0698cbd9?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=explore"
         };
       case "ai-builder":
         return {
           title: "AI Architect & Token Launchpad | Agunnaya Labs Studio",
           description: "Describe custom smart contract logic in plain English to compile Solidity via Gemini AI or deploy new tokens to bonding curves instantly.",
-          image: "/assets/images/ai-agent-interface.png",
-          url: "https://agunnaya-labs.studio/?tab=ai-builder"
+          image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=ai-builder"
         };
       case "nfts":
         return {
           title: "NFT Generative Studio | Agunnaya Labs Studio",
           description: "Mint and host decentralized generative artwork collections with custom maximum supply parameters and dynamic base metadata structures.",
-          image: "/assets/images/nft-collection-1.png",
-          url: "https://agunnaya-labs.studio/?tab=nfts"
+          image: "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=nfts"
         };
       case "daos":
         return {
           title: "Sovereign DAO Governance Builder | Agunnaya Labs Studio",
           description: "Build custom on-chain DAOs, register custom governance symbols, draft decentralization proposals, and cast weighted cryptographic votes.",
-          image: "/assets/images/dao-governance.png",
-          url: "https://agunnaya-labs.studio/?tab=daos"
+          image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=daos"
         };
       case "gamefi":
         return {
           title: "GameFi Quest Arena | Agunnaya Labs Studio",
           description: "Unlock seasonal developer battle passes, complete on-chain missions, level up dynamic achievements, and claim native AGL token bounties.",
-          image: "/assets/images/gamefi-achievements.png",
-          url: "https://agunnaya-labs.studio/?tab=gamefi"
+          image: "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=gamefi"
         };
       case "ai-agents":
         return {
           title: "Autonomous AI Agent Studio | Agunnaya Labs Studio",
           description: "Deploy self-contained autonomous agent registry modules with specific prompt guidelines, set custom query fees, and track performance.",
-          image: "/assets/images/ai-agent-interface.png",
-          url: "https://agunnaya-labs.studio/?tab=ai-agents"
+          image: "https://images.unsplash.com/photo-1677442136019-21780efad99a?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=ai-agents"
         };
       case "defi":
         return {
           title: "AMM Token Swap & Staking | Agunnaya Labs Studio",
           description: "Perform instant low-slippage swaps between ETH and native AGL utility tokens or lock up liquidity in compounding high-yield staking vaults.",
-          image: "/assets/images/defi-lending.png",
-          url: "https://agunnaya-labs.studio/?tab=defi"
+          image: "https://images.unsplash.com/photo-1621761191319-c6fb62004040?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=defi"
         };
       case "analytics":
         return {
           title: "Real-Time Market Analytics | Agunnaya Labs Studio",
           description: "Track live trading volumes, transaction histories, price tickers, and advanced line charts powered by dynamic bonding curve calculations.",
-          image: "/assets/images/analytics-dashboard.png",
-          url: "https://agunnaya-labs.studio/?tab=analytics"
+          image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=analytics"
         };
       case "admin":
         return {
           title: "Factory Tuning Parameters | Agunnaya Labs Studio",
           description: "Adjust global system configurations including curve fees, AA sponsorship maximum values, and view global node performance parameters.",
-          image: "/assets/images/analytics-dashboard.png",
-          url: "https://agunnaya-labs.studio/?tab=admin"
+          image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=admin"
         };
       case "referrals":
         return {
           title: "Earn 20% Fee Share Rewards | Agunnaya Labs Studio",
           description: "Invite colleagues to deploy bonding curves or trade assets, and earn a massive 20% of all generated fees dynamically settled in AGL tokens.",
-          image: "/assets/images/wallet-mobile.png",
-          url: "https://agunnaya-labs.studio/?tab=referrals"
+          image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=referrals"
+        };
+      case "agl-credits":
+        return {
+          title: "AGL Credits On-Chain Burn Portal | Agunnaya Labs Studio",
+          description: "Permanently burn AGL tokens to purchase low-latency compute credits recorded securely on Base Mainnet.",
+          image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=agl-credits"
         };
       default:
         return {
           title: "Agunnaya Labs Studio - High Performance Web3 Developer Studio",
           description: "The ultimate decentralized AI studio for smart contract creation, automated bonding curves, high APY staking, and sovereign agent hosting.",
-          image: "/assets/images/app-icon-interactive.png",
-          url: "https://agunnaya-labs.studio/"
+          image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/"
         };
     }
   };
@@ -494,6 +617,7 @@ export default function App() {
       case "admin":
         return (
           <AdminPanelPage
+            wallet={wallet}
             tokens={tokens}
             onRefreshTokens={refreshAllData}
             addTerminalLog={addTerminalLog}
@@ -508,6 +632,16 @@ export default function App() {
             onRefreshWallet={refreshAllData}
             addTerminalLog={addTerminalLog}
             showToast={showToast}
+          />
+        );
+      case "agl-credits":
+        return (
+          <AGLCreditsPage
+            wallet={wallet}
+            onRefreshWallet={refreshAllData}
+            addTerminalLog={addTerminalLog}
+            showToast={showToast}
+            setWalletState={setWallet}
           />
         );
       case "gdrive":
@@ -544,11 +678,16 @@ export default function App() {
         <Helmet>
           <title>Agunnaya Labs Studio - High Performance Web3 Developer Studio</title>
           <meta name="description" content="Decentralized on-chain developer studio with AI-powered builders, advanced DeFi swaps, staking, DAO voting tools, and smart token launchpads." />
+          <meta property="og:type" content="website" />
+          <meta property="og:site_name" content="Agunnaya Labs Studio" />
           <meta property="og:title" content="Agunnaya Labs Studio - High Performance Web3 Developer Studio" />
           <meta property="og:description" content="Decentralized on-chain developer studio with AI-powered builders, advanced DeFi swaps, staking, DAO voting tools, and smart token launchpads." />
-          <meta property="og:image" content="/assets/images/app-icon-interactive.png" />
-          <meta property="og:url" content="https://agunnaya-labs.studio/" />
+          <meta property="og:image" content="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80" />
+          <meta property="og:url" content="https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/" />
           <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content="Agunnaya Labs Studio - High Performance Web3 Developer Studio" />
+          <meta name="twitter:description" content="Decentralized on-chain developer studio with AI-powered builders, advanced DeFi swaps, staking, DAO voting tools, and smart token launchpads." />
+          <meta name="twitter:image" content="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80" />
         </Helmet>
         <LandingPage onLaunchApp={() => setIsLaunched(true)} />
       </HelmetProvider>
@@ -560,11 +699,16 @@ export default function App() {
       <Helmet>
         <title>{meta.title}</title>
         <meta name="description" content={meta.description} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Agunnaya Labs Studio" />
         <meta property="og:title" content={meta.title} />
         <meta property="og:description" content={meta.description} />
         <meta property="og:image" content={meta.image} />
         <meta property="og:url" content={meta.url} />
         <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={meta.title} />
+        <meta name="twitter:description" content={meta.description} />
+        <meta name="twitter:image" content={meta.image} />
       </Helmet>
       <div id="studio-app-root" className="min-h-screen bg-[#050505] text-white flex overflow-hidden">
         {/* Side Navigation bar */}
@@ -574,7 +718,7 @@ export default function App() {
             setSelectedToken(null);
             setCurrentTab(tab);
           }} 
-          isAdmin={wallet.isConnected && wallet.address === "0x479596943e70316A0d893De1876EBeA1Ea8E4D5B"}
+          isAdmin={wallet.isConnected}
           onGoHome={() => setIsLaunched(false)}
         />
 
@@ -645,7 +789,13 @@ export default function App() {
         </button>
 
         {/* Drawer Panel */}
-        <AIAssistantSidebar isOpen={isAIDrawerOpen} onClose={() => setIsAIDrawerOpen(false)} />
+        <AIAssistantSidebar 
+          isOpen={isAIDrawerOpen} 
+          onClose={() => setIsAIDrawerOpen(false)} 
+          wallet={wallet}
+          onRefreshWallet={refreshAllData}
+          showToast={showToast}
+        />
 
         {/* Wallet Connection Modal overlay */}
         <WalletModal

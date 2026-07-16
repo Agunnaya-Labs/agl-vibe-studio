@@ -54,3 +54,22 @@ export async function chatWithAgentAI(
   const result = await response.json();
   return result.content;
 }
+
+export async function optimizeSystemPromptAI(prompt: string): Promise<string> {
+  const response = await fetch("/api/ai/optimize-prompt", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ prompt }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Failed to optimize prompt. Code: ${response.status}`);
+  }
+
+  const result = await response.json();
+  return result.optimizedPrompt;
+}
+

@@ -98,6 +98,7 @@ export default function CreditsWidget({ walletAddress }: CreditsWidgetProps) {
   const remaining = balance?.creditsRemaining ?? 0;
   const hasOnChainCredits = (balance?.totalCreditsPurchased ?? 0) > 0;
   const isWorking = purchaseStep === "approving" || purchaseStep === "purchasing";
+  const isLow = hasOnChainCredits && remaining > 0 && remaining < 20;
 
   const chipLabel = loading
     ? "…"
@@ -112,7 +113,9 @@ export default function CreditsWidget({ walletAddress }: CreditsWidgetProps) {
         onClick={() => setIsOpen((o) => !o)}
         title="AGL Credits — click to manage"
         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono font-medium transition-all
-          ${hasOnChainCredits && remaining > 0
+          ${isLow
+            ? "bg-red-500/10 border-red-500/40 text-red-300 shadow-[0_0_12px_rgba(239,68,68,0.12)] animate-pulse"
+            : hasOnChainCredits && remaining > 0
             ? "bg-amber-500/10 border-amber-500/30 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.08)]"
             : "bg-zinc-900 border-white/10 text-zinc-400"
           } hover:brightness-110`}
@@ -138,6 +141,13 @@ export default function CreditsWidget({ walletAddress }: CreditsWidgetProps) {
           </div>
 
           <div className="p-4 space-y-4">
+            {/* ── Low-credits banner ── */}
+            {isLow && (
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/25 rounded-xl px-3 py-2 text-xs text-red-300">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>Only <strong>{remaining}</strong> credits left — top up to avoid AI call failures.</span>
+              </div>
+            )}
             {/* ── Balance table ── */}
             <div className="rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden">
               <div className="grid grid-cols-2 divide-x divide-white/5">

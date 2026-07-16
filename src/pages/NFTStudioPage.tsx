@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { NFTCollection, WalletState, NFTItem } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
-import { Disc, Image, Sparkles, CheckCircle, Tag, Settings, Users, Plus, ShieldCheck } from "lucide-react";
+import { Disc, Image, Sparkles, CheckCircle, Tag, Settings, Users, Plus, ShieldCheck, Upload } from "lucide-react";
+import BaseScanLink from "../components/BaseScanLink";
+import { uploadImage } from "../lib/imageUpload";
 
 interface NFTStudioPageProps {
   wallet: WalletState;
@@ -20,9 +22,25 @@ export default function NFTStudioPage({ wallet, collections, onRefreshNFTs, addT
   const [royaltyFee, setRoyaltyFee] = useState("5");
   const [bannerUrl, setBannerUrl] = useState("");
   const [creating, setCreating] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const bannerFileRef = useRef<HTMLInputElement>(null);
 
   // Mint state
   const [mintingCollection, setMintingCollection] = useState<string | null>(null);
+
+  const handleBannerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingBanner(true);
+    try {
+      const url = await uploadImage(file);
+      setBannerUrl(url);
+    } catch {
+      showToast("Image upload failed.", "error");
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
 
   const handleCreateCollection = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +55,7 @@ export default function NFTStudioPage({ wallet, collections, onRefreshNFTs, addT
 
     setTimeout(() => {
       const generatedAddress = "0x" + Math.random().toString(16).substr(2, 40);
-      const mockBanner = bannerUrl.trim() || "/assets/images/nft-gallery.png";
+      const mockBanner = bannerUrl.trim() || "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=500&auto=format&fit=crop&q=80";
 
       const newColl: NFTCollection = {
         contractAddress: generatedAddress,
@@ -241,15 +259,32 @@ export default function NFTStudioPage({ wallet, collections, onRefreshNFTs, addT
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">Artwork / Metadata Image URL (Optional)</label>
-              <input
-                id="nft-banner-input"
-                type="url"
-                value={bannerUrl}
-                onChange={(e) => setBannerUrl(e.target.value)}
-                placeholder="https://example.com/image.png or IPFS link"
-                className="w-full bg-zinc-950 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none font-mono"
-              />
+              <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">Artwork / Banner Image (Optional)</label>
+              <div className="flex gap-2">
+                <input
+                  id="nft-banner-input"
+                  type="url"
+                  value={bannerUrl.startsWith("data:") ? "" : bannerUrl}
+                  onChange={(e) => setBannerUrl(e.target.value)}
+                  placeholder="https://… or IPFS link, or upload →"
+                  className="flex-1 bg-zinc-950 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => bannerFileRef.current?.click()}
+                  disabled={uploadingBanner}
+                  className="px-3 py-2 rounded-xl border border-white/10 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all flex items-center gap-1.5 text-xs"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {uploadingBanner ? "…" : "File"}
+                </button>
+                <input ref={bannerFileRef} type="file" accept="image/*" className="hidden" onChange={handleBannerFileChange} />
+              </div>
+              {bannerUrl.startsWith("data:") && (
+                <p className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" /> Image uploaded
+                </p>
+              )}
             </div>
 
             <button
@@ -285,7 +320,9 @@ export default function NFTStudioPage({ wallet, collections, onRefreshNFTs, addT
                   <div>
                     <h4 className="font-display font-bold text-white text-xs">{coll.name}</h4>
                     <span className="block text-[10px] font-mono text-brand-purple font-bold uppercase">{coll.symbol} Collection</span>
-                    <span className="block text-[8px] font-mono text-zinc-500 truncate max-w-[150px]">Address: {coll.contractAddress}</span>
+                    <div className="flex items-center gap-1 mt-0.5">
+                  <BaseScanLink value={coll.contractAddress} className="text-[8px]" />
+                </div>
                   </div>
                 </div>
 
@@ -312,7 +349,7 @@ export default function NFTStudioPage({ wallet, collections, onRefreshNFTs, addT
                   className="w-full py-2 bg-brand-purple/20 hover:bg-brand-purple text-brand-purple hover:text-white border border-brand-purple/30 text-[10px] font-bold font-mono rounded-lg transition-all flex items-center justify-center gap-1.5"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>{mintingCollection === coll.contractAddress ? "Minting item..." : "Mint Mock NFT"}</span>
+                  <span>{mintingCollection === coll.contractAddress ? "Minting…" : "Mint NFT Item"}</span>
                 </button>
               </div>
             ))}

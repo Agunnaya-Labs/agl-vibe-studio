@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { DAO, Proposal, WalletState } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
 import { Users, Vote, Plus, Wallet, ShieldAlert, Sparkles, Building, Landmark, CheckCircle } from "lucide-react";
+import BaseScanLink from "../components/BaseScanLink";
 
 interface DAOBuilderPageProps {
   wallet: WalletState;
@@ -47,7 +48,7 @@ export default function DAOBuilderPage({ wallet, daos, onRefreshDAOs, addTermina
         description: daoDesc,
         creator: wallet.address,
         governanceTokenAddress: govToken,
-        treasuryBalanceEth: 5.0, // starts with 5 mock ETH treasury!
+        treasuryBalanceEth: 0, // empty treasury — funded via on-chain governance proposals
         memberCount: 1,
         proposals: [],
         createdAt: Date.now()
@@ -72,7 +73,7 @@ export default function DAOBuilderPage({ wallet, daos, onRefreshDAOs, addTermina
         details: `Created decentralized governance DAO: ${newDAO.name} (${newDAO.symbol})`
       });
 
-      addTerminalLog("success", `Governor contract active at ${newDAO.contractAddress}`);
+      addTerminalLog("success", `Governor contract active at ${newDAO.contractAddress} — verify on BaseScan: https://basescan.org/address/${newDAO.contractAddress}`);
       setCreatingDao(false);
       setDaoName("");
       setDaoSymbol("");

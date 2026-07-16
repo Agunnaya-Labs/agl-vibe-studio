@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { ethers } from "ethers";
 
 const app = express();
@@ -87,17 +87,12 @@ app.use(express.json());
 // Security headers (replaces broken <meta> CSP tags in index.html)
 app.use((req, res, next) => {
   const isDev = process.env.NODE_ENV !== "production";
-
-  // Allow Replit preview iframe in dev; lock down in production
   const frameAncestors = isDev
     ? "frame-ancestors 'self' https://*.replit.dev https://*.replit.app https://*.repl.co"
     : "frame-ancestors 'none'";
-
-  // Allow Vite HMR WebSocket in dev
   const connectSrc = isDev
     ? "connect-src 'self' https: wss: ws:"
     : "connect-src 'self' https:";
-
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
@@ -107,29 +102,31 @@ app.use((req, res, next) => {
     connectSrc,
     frameAncestors,
   ].join("; ");
-
   res.setHeader("Content-Security-Policy", csp);
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-
-  if (!isDev) {
-    res.setHeader("X-Frame-Options", "DENY");
-  }
-
+  if (!isDev) res.setHeader("X-Frame-Options", "DENY");
   next();
 });
 
-// Lazy-loaded GoogleGenerativeAI client to avoid startup crashes if key is not defined yet
-let aiClient: GoogleGenerativeAI | null = null;
+// Lazy-loaded GoogleGenAI client
+let aiClient: GoogleGenAI | null = null;
 
-function getAIClient(): GoogleGenerativeAI {
+function getAIClient(): GoogleGenAI {
   if (!aiClient) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not defined. Please add it via the Settings > Secrets panel.");
     }
-    aiClient = new GoogleGenerativeAI(apiKey);
+    aiClient = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          "User-Agent": "aistudio-build",
+        },
+      },
+    });
   }
   return aiClient;
 }
@@ -207,52 +204,47 @@ Your task is to parse the user's prompt for a blockchain project on Base and ret
 
 Format the output strictly as JSON.`;
 
-    const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
-    
-    const response = await model.generateContent({
-      contents: [{
-        role: "user",
-        parts: [{ text: `Build a project of type "${type || 'ERC-20 Token'}" based on this prompt: "${prompt}"` }]
-      }],
-      generationConfig: {
+    const response = await client.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: `Build a project of type "${type || 'ERC-20 Token'}" based on this prompt: "${prompt}"`,
+      config: {
+        systemInstruction,
         responseMimeType: "application/json",
         responseSchema: {
-          type: SchemaType.OBJECT,
+          type: Type.OBJECT,
+          required: ["name", "symbol", "description", "solidityCode", "parameters", "securityAudit", "uiTheme", "launchChecklist"],
           properties: {
-            name: { type: SchemaType.STRING, description: "Descriptive name of the project" },
-            symbol: { type: SchemaType.STRING, description: "Token ticker/symbol (e.g. MEME, AGFI, NFTG)" },
-            description: { type: SchemaType.STRING, description: "A elegant and detailed marketing/technical description of the project" },
-            solidityCode: { type: SchemaType.STRING, description: "Full Solidity code for the smart contract, ready to compile" },
+            name: { type: Type.STRING, description: "Descriptive name of the project" },
+            symbol: { type: Type.STRING, description: "Token ticker/symbol (e.g. MEME, AGFI, NFTG)" },
+            description: { type: Type.STRING, description: "A elegant and detailed marketing/technical description of the project" },
+            solidityCode: { type: Type.STRING, description: "Full Solidity code for the smart contract, ready to compile" },
             parameters: {
-              type: SchemaType.OBJECT,
+              type: Type.OBJECT,
               properties: {
-                initialSupply: { type: SchemaType.STRING, description: "Initial token supply or collection limit" },
-                mintPrice: { type: SchemaType.STRING, description: "Mint/buy price in ETH or fee parameters" },
-                additionalConfig: { type: SchemaType.STRING, description: "Any other special configurations" }
+                initialSupply: { type: Type.STRING, description: "Initial token supply or collection limit" },
+                mintPrice: { type: Type.STRING, description: "Mint/buy price in ETH or fee parameters" },
+                additionalConfig: { type: Type.STRING, description: "Any other special configurations" }
               }
             },
-            securityAudit: { type: SchemaType.STRING, description: "Detailed AI security audit notes, reentrancy guards, checks-effects-interactions" },
+            securityAudit: { type: Type.STRING, description: "Detailed AI security audit notes, reentrancy guards, checks-effects-interactions" },
             uiTheme: {
-              type: SchemaType.OBJECT,
+              type: Type.OBJECT,
               properties: {
-                primaryColor: { type: SchemaType.STRING, description: "Suggested Tailwind primary color class (e.g. purple-500, blue-600)" },
-                glowColor: { type: SchemaType.STRING, description: "Tailwind glow color class (e.g. purple-500/20)" }
+                primaryColor: { type: Type.STRING, description: "Suggested Tailwind primary color class (e.g. purple-500, blue-600)" },
+                glowColor: { type: Type.STRING, description: "Tailwind glow color class (e.g. purple-500/20)" }
               }
             },
             launchChecklist: {
-              type: SchemaType.ARRAY,
-              items: { type: SchemaType.STRING },
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
               description: "A list of 3-5 next actions to launch this on Base"
             }
-          },
-          required: ["name", "symbol", "description", "solidityCode", "parameters", "securityAudit", "uiTheme", "launchChecklist"]
+          }
         }
       }
     });
-    
-    const systemContext = { systemInstruction };
 
-    const text = response.response.text();
+    const text = response.text || "{}";
     res.json(JSON.parse(text));
   } catch (error: any) {
     console.error("AI Build Error:", error);
@@ -289,23 +281,61 @@ Roleplay as this specific AI Agent. Speak intelligently, with confidence, referr
       };
     });
 
-    const model = client.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      systemInstruction: systemInstruction
-    });
-
-    const response = await model.generateContent({
+    const response = await client.models.generateContent({
+      model: "gemini-3.5-flash",
       contents: formattedContents,
-      generationConfig: {
-        temperature: 0.8
+      config: {
+        systemInstruction,
+        temperature: 0.7,
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.LOW
+        }
       }
     });
 
-    const content = response.response.text();
-    res.json({ content });
+    res.json({ content: response.text || "Decompressing agent core response..." });
   } catch (error: any) {
     console.error("AI Agent Chat Error:", error);
     res.status(500).json({ error: error.message || "Autonomous agent system offline." });
+  }
+});
+
+// AI Prompt Optimizer Endpoint
+app.post("/api/ai/optimize-prompt", async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt) {
+      res.status(400).json({ error: "Prompt is required" });
+      return;
+    }
+
+    const client = getAIClient();
+
+    const systemInstruction = `You are an expert prompt engineer specializing in Web3 Autonomous Agents and LLM system prompts.
+Your task is to take a simple user directive or prompt and expand it into a highly detailed, extremely professional, and optimized system instruction for a Gemini-powered blockchain agent.
+Ensure the output:
+- Outlines clear behavioral directives and domain expertise (e.g. Solidity auditing, DeFi yields, tokenomics, marketing).
+- Enforces safety constraints (never leak private keys, maintain a secure and helpful posture).
+- Defines a distinct professional tone (confident, intelligent, Web3 terminal aesthetic).
+- Keeps the prompt compact but rich in cognitive value to save token overhead.
+Return only the optimized prompt text directly. No quotes, no preamble, no commentary.`;
+
+    const response = await client.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: `Optimize this directive: "${prompt}"`,
+      config: {
+        systemInstruction,
+        temperature: 0.7,
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.LOW
+        }
+      }
+    });
+
+    res.json({ optimizedPrompt: response.text || prompt });
+  } catch (error: any) {
+    console.error("AI Prompt Optimize Error:", error);
+    res.status(500).json({ error: error.message || "Could not optimize system prompt." });
   }
 });
 
@@ -343,35 +373,47 @@ Body: ${originalEmail.body}
 User instruction/guideline for response: ${prompt}`
       : `Draft a new email with this instruction: ${prompt}`;
 
-    const model = client.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      systemInstruction: systemInstruction
-    });
-
-    const response = await model.generateContent({
-      contents: [{
-        role: "user",
-        parts: [{ text: promptMessage }]
-      }],
-      generationConfig: {
+    const response = await client.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: promptMessage,
+      config: {
+        systemInstruction,
         responseMimeType: "application/json",
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.LOW
+        },
         responseSchema: {
-          type: SchemaType.OBJECT,
+          type: Type.OBJECT,
+          required: ["subject", "body"],
           properties: {
-            subject: { type: SchemaType.STRING, description: "A catchy, polished, professional subject line" },
-            body: { type: SchemaType.STRING, description: "The email body formatted with HTML (using simple tags like <p>, <br>, <strong>, <ul>, <li>, no full <html> block, just clean inline tags)" }
-          },
-          required: ["subject", "body"]
+            subject: { type: Type.STRING, description: "A catchy, polished, professional subject line" },
+            body: { type: Type.STRING, description: "The email body formatted with HTML (using simple tags like <p>, <br>, <strong>, <ul>, <li>, no full <html> block, just clean inline tags)" }
+          }
         }
       }
     });
 
-    const text = response.response.text();
+    const text = response.text || "{}";
     res.json(JSON.parse(text));
   } catch (error: any) {
     console.error("AI Email Draft Error:", error);
     res.status(500).json({ error: error.message || "Could not generate email draft." });
   }
+});
+
+// ─── Image upload endpoint (Feature 3: IPFS / logo upload) ──────────────────
+// Accepts a base64 data URI and returns the same URL so the client can persist
+// it in localStorage / Firestore.  For production, swap the return value for
+// an IPFS/S3 URL.  Max payload enforced by express.json limit.
+app.post("/api/upload/image", express.json({ limit: "8mb" }), (req, res) => {
+  const { dataUri, filename } = req.body as { dataUri?: string; filename?: string };
+  if (!dataUri || !dataUri.startsWith("data:image/")) {
+    res.status(400).json({ error: "Invalid or missing image data URI." });
+    return;
+  }
+  // Return the data URI as-is — the client stores it in the token record.
+  // Replace this with an IPFS pin call when an API key is available.
+  res.json({ url: dataUri, filename: filename || "upload" });
 });
 
 // Support health check

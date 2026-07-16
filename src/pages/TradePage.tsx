@@ -48,6 +48,7 @@ export default function TradePage({
   const [inputVal, setInputVal] = useState("");
   const [estimatedOutput, setEstimatedOutput] = useState(0);
   const [tradeLoading, setTradeLoading] = useState(false);
+  const [chartView, setChartView] = useState<"bonding" | "gecko">("bonding");
 
   // Re-estimate on input change
   useEffect(() => {
@@ -242,8 +243,71 @@ export default function TradePage({
             </div>
           </div>
 
-          {/* Core Bonding Curve Chart */}
-          <BondingCurveChart currentSupply={token.supply} maxSupply={token.maxSupply} tokenSymbol={token.symbol} />
+          {/* Chart Section with Dual-View Options */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-zinc-950/40 p-3 rounded-xl border border-white/5">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Chart Mode:</span>
+                <div className="flex bg-zinc-900 p-0.5 rounded-lg border border-white/5">
+                  <button
+                    id="chart-mode-bonding"
+                    type="button"
+                    onClick={() => setChartView("bonding")}
+                    className={`px-3 py-1.5 rounded-md text-[10px] font-mono font-bold transition-all ${
+                      chartView === "bonding"
+                        ? "bg-brand-purple text-white shadow-md font-extrabold"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    Bonding Curve Model
+                  </button>
+                  <button
+                    id="chart-mode-gecko"
+                    type="button"
+                    onClick={() => setChartView("gecko")}
+                    className={`px-3 py-1.5 rounded-md text-[10px] font-mono font-bold transition-all flex items-center gap-1.5 ${
+                      chartView === "gecko"
+                        ? "bg-emerald-500 text-black shadow-md font-extrabold"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                    Live Base DEX (GeckoTerminal)
+                  </button>
+                </div>
+              </div>
+
+              {chartView === "gecko" && (
+                <a
+                  href="https://www.geckoterminal.com/base/pools/0xe7d6de2bf95c563a819eb62cbf0c7e9020df53c875ccfbaf3fdccaa1fd25b085"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-mono text-zinc-400 hover:text-emerald-400 transition-all flex items-center gap-1 hover:underline"
+                >
+                  View full pool contract <ExternalLink className="w-3 h-3 text-emerald-400" />
+                </a>
+              )}
+            </div>
+
+            {chartView === "bonding" ? (
+              <BondingCurveChart currentSupply={token.supply} maxSupply={token.maxSupply} tokenSymbol={token.symbol} />
+            ) : (
+              <div className="w-full h-[450px] rounded-2xl overflow-hidden border border-white/10 bg-black relative shadow-2xl">
+                {/* Embedded GeckoTerminal Live Chart */}
+                <iframe
+                  id="geckoterminal-chart-embed"
+                  width="100%"
+                  height="100%"
+                  src="https://www.geckoterminal.com/base/pools/0xe7d6de2bf95c563a819eb62cbf0c7e9020df53c875ccfbaf3fdccaa1fd25b085?embed=1&info=0&swaps=1&theme=dark"
+                  title="GeckoTerminal Live Base DEX Pool Chart"
+                  frameBorder="0"
+                  allow="clipboard-write"
+                  allowFullScreen
+                  className="bg-black w-full h-full border-0"
+                ></iframe>
+              </div>
+            )}
+          </div>
 
           {/* macOS command terminal logs */}
           <TerminalLog logs={terminalLogs} />

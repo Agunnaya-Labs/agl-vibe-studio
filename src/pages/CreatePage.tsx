@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { generateProjectAI } from "../lib/gemini";
 import { AgunnayaDatabase, BASE_PRICE, SLOPE } from "../lib/db";
 import { Token, WalletState } from "../types";
+import { uploadImage } from "../lib/imageUpload";
+import BaseScanLink from "../components/BaseScanLink";
 import { 
   Sparkles, 
   Rocket, 
@@ -14,7 +16,8 @@ import {
   Layers, 
   Coins, 
   Zap,
-  Globe
+  Globe,
+  Upload
 } from "lucide-react";
 
 interface CreatePageProps {
@@ -46,11 +49,50 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
   const [referral, setReferral] = useState<number>(0);
   const [seedBuy, setSeedBuy] = useState<string>("0");
   const [launchingToken, setLaunchingToken] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoFileRef = useRef<HTMLInputElement>(null);
+
+  // Deployed addresses for BaseScan links
+  const [deployedAIAddress, setDeployedAIAddress] = useState<string | null>(null);
+  const [deployedLaunchpadAddress, setDeployedLaunchpadAddress] = useState<string | null>(null);
+
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const url = await uploadImage(file);
+      setTokenLogo(url);
+    } catch {
+      showToast("Image upload failed. Try pasting a URL instead.", "error");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   // Handles AI Contract Generation
   const handleAIGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiPrompt.trim() || aiLoading) return;
+
+    if (wallet.isConnected) {
+      const currentCredits = wallet.aglCredits || 0;
+      if (currentCredits < 50) {
+        showToast("Insufficient credits! 50 AGL Credits required for contract generation.", "error");
+        addTerminalLog("error", "AI ARCHITECT: Generation rejected. Insufficient computational credits. Navigate to the AGL Credits page and permanently burn AGL tokens to earn credits.");
+        return;
+      }
+      
+      // Deduct 50 credits
+      const updatedWallet: WalletState = {
+        ...wallet,
+        aglCredits: Math.max(0, currentCredits - 50)
+      };
+      AgunnayaDatabase.saveWallet(updatedWallet);
+      onRefreshWallet();
+      showToast("Consumed 50 AGL Credits", "info");
+    }
+
     setAiLoading(true);
     setAiResult(null);
     setDeploySuccessAI(false);
@@ -79,9 +121,12 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
 
     setTimeout(() => {
       // Create token object representing the deployed asset
-      const mockLogo = "/assets/images/logo-main.png";
+      const aiSym = (aiResult.symbol || "AI").slice(0, 2).toUpperCase();
+      const aiHue = aiSym.split("").reduce((n: number, c: string) => n + c.charCodeAt(0), 0) % 360;
+      const aiSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><rect width='128' height='128' rx='64' fill='hsl(${aiHue},60%,15%)'/><text x='64' y='82' font-family='monospace' font-size='48' font-weight='bold' text-anchor='middle' fill='hsl(${aiHue},80%,70%)'>${aiSym}</text></svg>`;
+      const generatedAddr = "0x" + Math.random().toString(16).substr(2, 40);
       const newToken: Token = {
-        address: "0x" + Math.random().toString(16).substr(2, 40),
+        address: generatedAddr,
         name: aiResult.name,
         symbol: aiResult.symbol,
         description: aiResult.description,
@@ -94,12 +139,13 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
         reserveEth: 0,
         volume24h: 0,
         category: "utility",
-        logoUrl: mockLogo,
+        logoUrl: tokenLogo.trim() || aiSvg,
         socials: { website: "https://agunnaya.io" },
         isVerified: true,
         vestingWeeks: 0,
         referralRewardsPct: 0,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        implementation: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" // Default AI-Architect template implementation
       };
 
       // Add to database
@@ -129,6 +175,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
       });
 
       addTerminalLog("success", `CONTRACT DEPLOYED successfully at address ${newToken.address}`);
+      setDeployedAIAddress(newToken.address);
       setDeployingAI(false);
       setDeploySuccessAI(true);
       onLaunchSuccess(newToken);
@@ -156,7 +203,10 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
 
     setTimeout(() => {
       const generatedAddress = "0x" + Math.random().toString(16).substr(2, 40);
-      const mockLogoUrl = tokenLogo.trim() || "/assets/images/logo-main.png";
+      const lpSym = tokenSymbol.slice(0, 2).toUpperCase() || "TK";
+      const lpHue = lpSym.split("").reduce((n: number, c: string) => n + c.charCodeAt(0), 0) % 360;
+      const lpSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><rect width='128' height='128' rx='64' fill='hsl(${lpHue},60%,15%)'/><text x='64' y='82' font-family='monospace' font-size='48' font-weight='bold' text-anchor='middle' fill='hsl(${lpHue},80%,70%)'>${lpSym}</text></svg>`;
+      const mockLogoUrl = tokenLogo.trim() || lpSvg;
       
       const newToken: Token = {
         address: generatedAddress,
@@ -177,7 +227,8 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
         isVerified: false,
         vestingWeeks: vesting,
         referralRewardsPct: referral,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        implementation: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" // Default standard bonding curve implementation
       };
 
       // Register new token
@@ -215,6 +266,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
       });
 
       addTerminalLog("success", `Bonding curve token registered at registry: ${newToken.address}`);
+      setDeployedLaunchpadAddress(newToken.address);
       setLaunchingToken(false);
       onLaunchSuccess(newToken);
     }, 2000);
@@ -378,15 +430,39 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">Logo Image URL (Optional)</label>
-                  <input
-                    id="launchpad-logo-input"
-                    type="url"
-                    value={tokenLogo}
-                    onChange={(e) => setTokenLogo(e.target.value)}
-                    placeholder="e.g. https://domain.com/logo.png"
-                    className="w-full bg-zinc-950 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-brand-blue/40 font-mono"
-                  />
+                  <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">Logo Image (Optional)</label>
+                  <div className="flex gap-2">
+                    <input
+                      id="launchpad-logo-input"
+                      type="url"
+                      value={tokenLogo.startsWith("data:") ? "" : tokenLogo}
+                      onChange={(e) => setTokenLogo(e.target.value)}
+                      placeholder="https://… or upload →"
+                      className="flex-1 bg-zinc-950 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-brand-blue/40 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => logoFileRef.current?.click()}
+                      disabled={uploadingLogo}
+                      className="px-3 py-2 rounded-xl border border-white/10 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all flex items-center gap-1.5 text-xs"
+                      title="Upload image file"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      {uploadingLogo ? "…" : "File"}
+                    </button>
+                    <input
+                      ref={logoFileRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleLogoFileChange}
+                    />
+                  </div>
+                  {tokenLogo.startsWith("data:") && (
+                    <p className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" /> Image uploaded — will be used as token logo
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">Asset Category</label>
@@ -443,15 +519,22 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
                 </div>
               </div>
 
-              <button
-                id="launchpad-submit-btn"
-                type="submit"
-                disabled={launchingToken}
-                className="w-full py-3 rounded-xl bg-brand-blue hover:bg-blue-600 font-semibold font-display text-xs text-white shadow-lg shadow-brand-blue/25 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all flex items-center justify-center gap-2"
-              >
-                <Rocket className="w-4 h-4" />
-                <span>{launchingToken ? "Deploying Bonding Curve..." : "Launch Token onto Base Curve"}</span>
-              </button>
+              <div className="space-y-2">
+                <button
+                  id="launchpad-submit-btn"
+                  type="submit"
+                  disabled={launchingToken}
+                  className="w-full py-3 rounded-xl bg-brand-blue hover:bg-blue-600 font-semibold font-display text-xs text-white shadow-lg shadow-brand-blue/25 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all flex items-center justify-center gap-2"
+                >
+                  <Rocket className="w-4 h-4" />
+                  <span>{launchingToken ? "Deploying Bonding Curve..." : "Launch Token onto Base Curve"}</span>
+                </button>
+                {deployedLaunchpadAddress && !launchingToken && (
+                  <div className="flex justify-center pt-1">
+                    <BaseScanLink value={deployedLaunchpadAddress} badge label="View deployed token on BaseScan ↗" />
+                  </div>
+                )}
+              </div>
             </form>
           </div>
         )}
@@ -521,9 +604,16 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
 
             {/* Deploy Trigger Button */}
             {deploySuccessAI ? (
-              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-center flex items-center justify-center gap-2 font-semibold text-xs font-display">
-                <CheckCircle className="w-4 h-4" />
-                <span>Custom Contract Deployed on Base!</span>
+              <div className="space-y-2">
+                <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-center flex items-center justify-center gap-2 font-semibold text-xs font-display">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Custom Contract Deployed on Base!</span>
+                </div>
+                {deployedAIAddress && (
+                  <div className="flex justify-center">
+                    <BaseScanLink value={deployedAIAddress} badge />
+                  </div>
+                )}
               </div>
             ) : (
               <button
