@@ -2,9 +2,7 @@ import React, { useState } from "react";
 import { AIAgent, WalletState } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
 import { chatWithAgentAI, optimizeSystemPromptAI } from "../lib/gemini";
-import { Bot, Send, BrainCircuit, X, MessageSquare, Plus, Zap, Award, Coins, Sparkles, Cpu, Layers, ShieldCheck, Upload } from "lucide-react";
-import BaseScanLink from "../components/BaseScanLink";
-import { uploadImage } from "../lib/imageUpload";
+import { Bot, Send, BrainCircuit, X, MessageSquare, Plus, Zap, Award, Coins, Sparkles, Cpu, Layers, ShieldCheck } from "lucide-react";
 
 interface AgentStudioPageProps {
   wallet: WalletState;
@@ -21,24 +19,6 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
   const [systemPrompt, setSystemPrompt] = useState("");
   const [subFee, setSubFee] = useState("0.001");
   const [loading, setLoading] = useState(false);
-  const [customAvatarUrl, setCustomAvatarUrl] = useState("");
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [lastDeployedAddress, setLastDeployedAddress] = useState<string | null>(null);
-  const avatarFileRef = React.useRef<HTMLInputElement>(null);
-
-  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingAvatar(true);
-    try {
-      const url = await uploadImage(file);
-      setCustomAvatarUrl(url);
-    } catch {
-      showToast("Avatar upload failed.", "error");
-    } finally {
-      setUploadingAvatar(false);
-    }
-  };
 
   // Active chat state
   const [activeChatAgent, setActiveChatAgent] = useState<AIAgent | null>(null);
@@ -79,10 +59,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
     setTimeout(() => {
       const generatedId = "agent_" + Math.random().toString(36).substr(2, 5);
       const generatedAddress = "0x" + Math.random().toString(16).substr(2, 40);
-      // Deterministic SVG avatar from symbol (or use uploaded image)
-      const sym = symbol.slice(0, 2).toUpperCase();
-      const hue = sym.split("").reduce((n: number, c: string) => n + c.charCodeAt(0), 0) % 360;
-      const svgAvatar = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><rect width='128' height='128' rx='64' fill='hsl(${hue},60%,15%)'/><text x='64' y='82' font-family='monospace' font-size='48' font-weight='bold' text-anchor='middle' fill='hsl(${hue},80%,70%)'>${sym}</text></svg>`;
+      const mockAvatar = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=60";
 
       const newAgent: AIAgent = {
         id: generatedId,
@@ -95,7 +72,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
         tokenPrice: 0.01,
         usageFeeEth: parseFloat(subFee) || 0.001,
         lifetimeRevenueEth: 0,
-        avatarUrl: customAvatarUrl || svgAvatar,
+        avatarUrl: mockAvatar,
         systemPrompt: systemPrompt,
         aglRewardDiscounts: true,
         chatHistory: [
@@ -123,14 +100,12 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
         details: `Launched AI agent worker: ${newAgent.name} (${newAgent.symbol}) powered by Gemini LLM`
       });
 
-      addTerminalLog("success", `AI Agent fully registered at ${newAgent.contractAddress} — https://basescan.org/address/${newAgent.contractAddress}`);
-      setLastDeployedAddress(newAgent.contractAddress);
+      addTerminalLog("success", `AI Agent fully registered. Metadata synced with token model: ${newAgent.contractAddress}`);
       setLoading(false);
       setName("");
       setSymbol("");
       setDescription("");
       setSystemPrompt("");
-      setCustomAvatarUrl("");
     }, 2000);
   };
 
@@ -153,9 +128,8 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
     try {
       const allMessages = [...chatMessages, { role: "user", content: userText }];
       
-      const response = await chatWithAgentAI(allMessages, activeChatAgent, wallet.address);
-
-      // Stream word-by-word for a typewriter effect
+      const response = await chatWithAgentAI(allMessages, activeChatAgent);
+      
       const words = response.split(" ");
       let currentText = "";
       let wordIdx = 0;
@@ -323,48 +297,15 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
               />
             </div>
 
-            {/* Optional avatar upload */}
-            <div>
-              <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">Agent Avatar (Optional)</label>
-              <div className="flex items-center gap-3">
-                {customAvatarUrl ? (
-                  <img src={customAvatarUrl} alt="avatar preview" className="w-10 h-10 rounded-xl object-cover border border-white/10" />
-                ) : (
-                  <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-dashed border-white/10 flex items-center justify-center text-zinc-600 text-xs">AI</div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => avatarFileRef.current?.click()}
-                  disabled={uploadingAvatar}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/10 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all text-xs"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  {uploadingAvatar ? "Uploading…" : customAvatarUrl ? "Change Image" : "Upload Image"}
-                </button>
-                {customAvatarUrl && (
-                  <button type="button" onClick={() => setCustomAvatarUrl("")} className="text-xs text-zinc-600 hover:text-red-400 transition-colors">Remove</button>
-                )}
-                <input ref={avatarFileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarFileChange} />
-                <span className="text-[10px] text-zinc-600">Leave empty for auto-generated SVG avatar</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <button
-                id="agent-create-submit-btn"
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 rounded-xl bg-brand-purple hover:bg-purple-600 font-semibold font-display text-xs text-white shadow-lg shadow-brand-purple/20 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all flex items-center justify-center gap-2"
-              >
-                <BrainCircuit className="w-4 h-4" />
-                <span>{loading ? "Assembling cognitive layers..." : "Deploy AI Agent Worker"}</span>
-              </button>
-              {lastDeployedAddress && !loading && (
-                <div className="flex justify-center pt-1">
-                  <BaseScanLink value={lastDeployedAddress} badge label="View deployed agent on BaseScan ↗" />
-                </div>
-              )}
-            </div>
+            <button
+              id="agent-create-submit-btn"
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl bg-brand-purple hover:bg-purple-600 font-semibold font-display text-xs text-white shadow-lg shadow-brand-purple/20 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all flex items-center justify-center gap-2"
+            >
+              <BrainCircuit className="w-4 h-4" />
+              <span>{loading ? "Assembling cognitive layers..." : "Deploy AI Agent Worker"}</span>
+            </button>
           </form>
         </div>
 

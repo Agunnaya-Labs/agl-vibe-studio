@@ -119,8 +119,7 @@ export default function WalletModal({ isOpen, onClose, onConnect }: WalletModalP
           <p className="text-[10px] text-zinc-500">
             By connecting, you agree to Agunnaya Labs' Terms of Service.
             <br />
-            MetaMask / Coinbase connect to your real Base Mainnet address.
-            Smart Account uses a sponsored demo address.
+            Secure sandbox environment - all operations are executed on simulated Base devnet.
           </p>
         </div>
       </div>

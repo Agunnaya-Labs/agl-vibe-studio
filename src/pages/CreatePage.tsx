@@ -1,9 +1,8 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { generateProjectAI } from "../lib/gemini";
 import { AgunnayaDatabase, BASE_PRICE, SLOPE } from "../lib/db";
 import { Token, WalletState } from "../types";
 import IPFSUploader from "../components/IPFSUploader";
-import BaseScanLink from "../components/BaseScanLink";
 import { analyzeSolidityCode } from "../lib/security";
 import { db, auth } from "../lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -20,7 +19,6 @@ import {
   Coins, 
   Zap,
   Globe,
-  Upload,
   Loader2,
   Cpu,
   ExternalLink,
@@ -139,26 +137,6 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
   const [referral, setReferral] = useState<number>(0);
   const [seedBuy, setSeedBuy] = useState<string>("0");
   const [launchingToken, setLaunchingToken] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-  const logoFileRef = useRef<HTMLInputElement>(null);
-
-  // Deployed addresses for BaseScan links
-  const [deployedAIAddress, setDeployedAIAddress] = useState<string | null>(null);
-  const [deployedLaunchpadAddress, setDeployedLaunchpadAddress] = useState<string | null>(null);
-
-  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingLogo(true);
-    try {
-      const url = await uploadImage(file);
-      setTokenLogo(url);
-    } catch {
-      showToast("Image upload failed. Try pasting a URL instead.", "error");
-    } finally {
-      setUploadingLogo(false);
-    }
-  };
 
   // Handles AI Contract Generation
   const handleAIGenerate = async (e: React.FormEvent) => {
@@ -270,6 +248,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
           }
           onRefreshWallet();
 
+          // Log success activity
           AgunnayaDatabase.addActivity({
             type: "deployment",
             tokenSymbol: newToken.symbol,
@@ -277,7 +256,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
             user: wallet.address,
             amount: 1,
             ethValue: 0.002,
-            details: `Successfully deployed custom Solidity contract: ${newToken.name} (${newToken.symbol}) on Base`
+            details: `Successfully deployed custom Solidity contract: ${newToken.name} (${newToken.symbol}) on Base Sepolia`
           });
 
           addTerminalLog("success", `CONTRACT DEPLOYED successfully at address ${newToken.address}`);
@@ -312,10 +291,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
 
     setTimeout(() => {
       const generatedAddress = "0x" + Math.random().toString(16).substr(2, 40);
-      const lpSym = tokenSymbol.slice(0, 2).toUpperCase() || "TK";
-      const lpHue = lpSym.split("").reduce((n: number, c: string) => n + c.charCodeAt(0), 0) % 360;
-      const lpSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><rect width='128' height='128' rx='64' fill='hsl(${lpHue},60%,15%)'/><text x='64' y='82' font-family='monospace' font-size='48' font-weight='bold' text-anchor='middle' fill='hsl(${lpHue},80%,70%)'>${lpSym}</text></svg>`;
-      const mockLogoUrl = tokenLogo.trim() || lpSvg;
+      const mockLogoUrl = tokenLogo.trim() || "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=128&auto=format&fit=crop&q=60";
       
       const newToken: Token = {
         address: generatedAddress,
@@ -375,7 +351,6 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
       });
 
       addTerminalLog("success", `Bonding curve token registered at registry: ${newToken.address}`);
-      setDeployedLaunchpadAddress(newToken.address);
       setLaunchingToken(false);
       onLaunchSuccess(newToken);
     }, 2000);
@@ -628,22 +603,15 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <button
-                  id="launchpad-submit-btn"
-                  type="submit"
-                  disabled={launchingToken}
-                  className="w-full py-3 rounded-xl bg-brand-blue hover:bg-blue-600 font-semibold font-display text-xs text-white shadow-lg shadow-brand-blue/25 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all flex items-center justify-center gap-2"
-                >
-                  <Rocket className="w-4 h-4" />
-                  <span>{launchingToken ? "Deploying Bonding Curve..." : "Launch Token onto Base Curve"}</span>
-                </button>
-                {deployedLaunchpadAddress && !launchingToken && (
-                  <div className="flex justify-center pt-1">
-                    <BaseScanLink value={deployedLaunchpadAddress} badge label="View deployed token on BaseScan ↗" />
-                  </div>
-                )}
-              </div>
+              <button
+                id="launchpad-submit-btn"
+                type="submit"
+                disabled={launchingToken}
+                className="w-full py-3 rounded-xl bg-brand-blue hover:bg-blue-600 font-semibold font-display text-xs text-white shadow-lg shadow-brand-blue/25 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all flex items-center justify-center gap-2"
+              >
+                <Rocket className="w-4 h-4" />
+                <span>{launchingToken ? "Deploying Bonding Curve..." : "Launch Token onto Base Curve"}</span>
+              </button>
             </form>
           </div>
         )}
@@ -774,7 +742,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
                 {deployedAddress && (
                   <div className="bg-zinc-900 border border-white/5 rounded-xl p-3 text-center space-y-1.5 animate-fade-in">
                     <span className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 block">Deployed Contract Address</span>
-                    <a
+                    <a 
                       href={`https://basescan.org/address/${deployedAddress}`}
                       target="_blank"
                       rel="noopener noreferrer"

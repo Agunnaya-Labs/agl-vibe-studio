@@ -114,28 +114,6 @@ export default function App() {
       }
     });
 
-    // 3. Real-time Firestore activity subscription — keeps the activity feed live
-    //    Falls back gracefully if Firestore is not provisioned (the error is suppressed).
-    let unsubActivities: (() => void) | null = null;
-    try {
-      const actQ = query(collection(db, "activities"), orderBy("timestamp", "desc"), limit(50));
-      unsubActivities = onSnapshot(
-        actQ,
-        (snap) => {
-          if (snap.empty) return;
-          const firestoreActs = snap.docs.map((d) => d.data() as Activity);
-          setActivities((prev) => {
-            // Merge: firestoreActs take priority; keep any local-only items not yet synced
-            const localOnly = prev.filter((a) => !firestoreActs.find((fa) => fa.id === a.id));
-            return [...firestoreActs, ...localOnly].sort((a, b) => b.timestamp - a.timestamp);
-          });
-        },
-        () => { /* Firestore not provisioned — silently ignore */ }
-      );
-    } catch {
-      // onSnapshot setup failed (network or rules) — ignore
-    }
-
     // Check for referral code in URL search params
     const params = new URLSearchParams(window.location.search);
     const refCode = params.get("ref");
@@ -155,9 +133,29 @@ export default function App() {
       }
     }
 
+    // 3. Set up Firestore real-time listener for activities
+    const activitiesQuery = query(
+      collection(db, "activities"),
+      orderBy("timestamp", "desc"),
+      limit(50)
+    );
+    const unsubscribeActivities = onSnapshot(activitiesQuery, (snapshot) => {
+      const activeList: Activity[] = [];
+      snapshot.forEach((doc) => {
+        activeList.push(doc.data() as Activity);
+      });
+      if (activeList.length > 0) {
+        const sorted = activeList.sort((a, b) => b.timestamp - a.timestamp);
+        setActivities(sorted);
+        localStorage.setItem("agl_activities", JSON.stringify(sorted));
+      }
+    }, (error) => {
+      console.error("Error in real-time activities subscription:", error);
+    });
+
     return () => {
       unsubscribe();
-      unsubActivities?.();
+      unsubscribeActivities();
     };
   }, []);
 

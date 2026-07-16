@@ -16,13 +16,13 @@ export interface AIProjectResult {
   launchChecklist: string[];
 }
 
-export async function generateProjectAI(prompt: string, type: string, walletAddress?: string): Promise<AIProjectResult> {
+export async function generateProjectAI(prompt: string, type: string): Promise<AIProjectResult> {
   const response = await fetch("/api/ai/build", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ prompt, type, walletAddress }),
+    body: JSON.stringify({ prompt, type }),
   });
 
   if (!response.ok) {
@@ -35,15 +35,14 @@ export async function generateProjectAI(prompt: string, type: string, walletAddr
 
 export async function chatWithAgentAI(
   messages: Array<{ role: "user" | "assistant"; content: string }>,
-  agentProfile: { name: string; symbol: string; description: string; contractAddress: string },
-  walletAddress?: string
+  agentProfile: { name: string; symbol: string; description: string; contractAddress: string }
 ): Promise<string> {
   const response = await fetch("/api/ai/agent-chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ messages, agentProfile, walletAddress }),
+    body: JSON.stringify({ messages, agentProfile }),
   });
 
   if (!response.ok) {
