@@ -54,6 +54,53 @@ export default function TerminalLog({ logs, onClear }: TerminalLogProps) {
     setInputCommand("");
   };
 
+  // Helper to parse hex addresses and turn them into BaseScan links
+  const renderMessageWithLinks = (msg: string) => {
+    const addressRegex = /0x[a-fA-F0-9]{40}/g;
+    const matches = msg.match(addressRegex);
+    
+    if (!matches) {
+      return msg;
+    }
+
+    const parts = [];
+    let lastIndex = 0;
+    addressRegex.lastIndex = 0;
+    let match;
+    let keyIdx = 0;
+    
+    while ((match = addressRegex.exec(msg)) !== null) {
+      const matchIndex = match.index;
+      const address = match[0];
+      
+      if (matchIndex > lastIndex) {
+        parts.push(msg.substring(lastIndex, matchIndex));
+      }
+      
+      parts.push(
+        <a 
+          key={`link-${keyIdx++}`}
+          href={`https://basescan.org/address/${address}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand-blue hover:underline font-bold font-mono hover:text-brand-purple transition-all"
+          title="Verify on BaseScan"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {address.slice(0, 10)}...{address.slice(-8)}
+        </a>
+      );
+      
+      lastIndex = addressRegex.lastIndex;
+    }
+    
+    if (lastIndex < msg.length) {
+      parts.push(msg.substring(lastIndex));
+    }
+    
+    return <>{parts}</>;
+  };
+
   return (
     <>
       {isExpanded && (
@@ -150,7 +197,7 @@ export default function TerminalLog({ logs, onClear }: TerminalLogProps) {
             <div key={logId} className="flex items-start gap-2">
               <span className="text-zinc-600 select-none">{logTimestamp}</span>
               <span className={`${typeColor} shrink-0`}>{badge}</span>
-              <span className="text-zinc-100">{logMessage}</span>
+              <span className="text-zinc-100">{renderMessageWithLinks(logMessage)}</span>
             </div>
           );
         })}

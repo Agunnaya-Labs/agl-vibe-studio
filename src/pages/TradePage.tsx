@@ -226,7 +226,18 @@ export default function TradePage({
                   <h2 className="text-lg font-bold font-display text-white">{token.name}</h2>
                   <span className="text-[10px] font-mono font-bold bg-brand-purple/20 text-brand-purple px-1.5 py-0.5 rounded">{token.symbol}</span>
                 </div>
-                <span className="text-[10px] font-mono text-zinc-500 font-semibold truncate block max-w-xs sm:max-w-md">Contract: {token.address}</span>
+                <span className="text-[10px] font-mono text-zinc-500 font-semibold truncate flex items-center gap-1.5 max-w-xs sm:max-w-md">
+                  Contract: 
+                  <a 
+                    href={`https://basescan.org/address/${token.address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-brand-blue hover:underline hover:text-brand-purple transition-all font-bold"
+                    title="Verify on BaseScan"
+                  >
+                    {token.address} ↗
+                  </a>
+                </span>
               </div>
             </div>
 

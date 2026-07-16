@@ -196,12 +196,16 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
         
         if (currentCredits >= 10) {
           // Sponsor with AGL credits (discounted model)
+          const remainingCredits = currentCredits - 10;
           updatedWallet = {
             ...wallet,
-            aglCredits: currentCredits - 10
+            aglCredits: remainingCredits
           };
           showToast("Query sponsored with 10 AGL Credits!", "success");
           addTerminalLog("system", `AGENT HARNESS: Query sponsored using 10 computational credits for ${activeChatAgent.name}.`);
+          if (remainingCredits < 20) {
+            showToast("⚠️ Low computational credits remaining. Top up your AGL credits soon to prevent future AI failures!", "info");
+          }
         } else {
           // Pay with ETH
           updatedWallet = { 

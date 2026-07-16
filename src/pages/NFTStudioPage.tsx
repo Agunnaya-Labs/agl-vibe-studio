@@ -1,9 +1,9 @@
 import React, { useState, useRef } from "react";
 import { NFTCollection, WalletState, NFTItem } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
-import { Disc, Image, Sparkles, CheckCircle, Tag, Settings, Users, Plus, ShieldCheck, Upload } from "lucide-react";
+import IPFSUploader from "../components/IPFSUploader";
 import BaseScanLink from "../components/BaseScanLink";
-import { uploadImage } from "../lib/imageUpload";
+import { Disc, Image, Sparkles, CheckCircle, Tag, Settings, Users, Plus, ShieldCheck, Upload } from "lucide-react";
 
 interface NFTStudioPageProps {
   wallet: WalletState;
@@ -259,32 +259,13 @@ export default function NFTStudioPage({ wallet, collections, onRefreshNFTs, addT
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">Artwork / Banner Image (Optional)</label>
-              <div className="flex gap-2">
-                <input
-                  id="nft-banner-input"
-                  type="url"
-                  value={bannerUrl.startsWith("data:") ? "" : bannerUrl}
-                  onChange={(e) => setBannerUrl(e.target.value)}
-                  placeholder="https://… or IPFS link, or upload →"
-                  className="flex-1 bg-zinc-950 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={() => bannerFileRef.current?.click()}
-                  disabled={uploadingBanner}
-                  className="px-3 py-2 rounded-xl border border-white/10 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all flex items-center gap-1.5 text-xs"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  {uploadingBanner ? "…" : "File"}
-                </button>
-                <input ref={bannerFileRef} type="file" accept="image/*" className="hidden" onChange={handleBannerFileChange} />
-              </div>
-              {bannerUrl.startsWith("data:") && (
-                <p className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" /> Image uploaded
-                </p>
-              )}
+              <IPFSUploader
+                onUploadSuccess={(url) => setBannerUrl(url)}
+                showToast={showToast}
+                addTerminalLog={addTerminalLog}
+                label="Collection Artwork (Pinned to IPFS)"
+                placeholderUrl={bannerUrl}
+              />
             </div>
 
             <button
