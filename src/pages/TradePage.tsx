@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Token, WalletState, Activity } from "../types";
+import { Token, WalletState, Activity, PriceAlert } from "../types";
 import BondingCurveChart from "../components/BondingCurveChart";
 import TerminalLog, { TerminalLine } from "../components/TerminalLog";
+import { LineChart, Line, ResponsiveContainer, YAxis, AreaChart, Area, Tooltip as RechartsTooltip } from "recharts";
 import { 
   getSpotPrice, 
   getTokensForEth, 
@@ -22,7 +23,9 @@ import {
   Cpu, 
   DollarSign, 
   Sparkles,
-  Award
+  Award,
+  Bell,
+  Trash
 } from "lucide-react";
 
 interface TradePageProps {
@@ -33,6 +36,10 @@ interface TradePageProps {
   terminalLogs: TerminalLine[];
   addTerminalLog: (type: "info" | "success" | "error" | "buy" | "sell" | "system", message: string) => void;
   showToast: (message: string, type: "success" | "error" | "info") => void;
+  priceAlerts: PriceAlert[];
+  onAddPriceAlert: (alert: Omit<PriceAlert, "id" | "createdAt" | "status" | "triggeredAt">) => void;
+  onDeletePriceAlert: (id: string) => void;
+  firebaseUser: any;
 }
 
 export default function TradePage({ 
@@ -42,13 +49,115 @@ export default function TradePage({
   onRefreshWallet, 
   terminalLogs, 
   addTerminalLog,
-  showToast
+  showToast,
+  priceAlerts,
+  onAddPriceAlert,
+  onDeletePriceAlert,
+  firebaseUser
 }: TradePageProps) {
   const [tradeMode, setTradeMode] = useState<"buy" | "sell">("buy");
   const [inputVal, setInputVal] = useState("");
   const [estimatedOutput, setEstimatedOutput] = useState(0);
   const [tradeLoading, setTradeLoading] = useState(false);
   const [chartView, setChartView] = useState<"bonding" | "gecko">("bonding");
+
+  // Local state for the sparkline price movement history
+  const [priceHistory, setPriceHistory] = useState<number[]>([]);
+
+  // Calculate price trend metrics for sparkline
+  const isUp = priceHistory.length > 1 ? priceHistory[priceHistory.length - 1] >= priceHistory[0] : true;
+  const strokeColor = isUp ? "#10b981" : "#f43f5e";
+  const priceChangePct = priceHistory.length > 1 ? ((priceHistory[priceHistory.length - 1] - priceHistory[0]) / priceHistory[0] * 100) : 0;
+  const sparklineData = priceHistory.map((p, idx) => ({ idx, price: p * 1000000 }));
+
+  // Generate deterministic pseudo-random history of price points
+  const generatePriceHistory = (tokenAddress: string, currentPrice: number) => {
+    let hash = 0;
+    for (let i = 0; i < tokenAddress.length; i++) {
+      hash = tokenAddress.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    const points = 15;
+    const history: number[] = [];
+    let price = currentPrice * 0.92; // start slightly lower
+    
+    for (let i = 0; i < points - 1; i++) {
+      const pseudoRandom = Math.sin(hash + i) * 0.5 + 0.5; // value between 0 and 1
+      const percentChange = (pseudoRandom - 0.45) * 0.04; // -1.8% to +2.2%
+      price = price * (1 + percentChange);
+      history.push(price);
+    }
+    
+    // Last point is exactly current price
+    history.push(currentPrice);
+    return history;
+  };
+
+  // Initialize price history
+  useEffect(() => {
+    setPriceHistory(generatePriceHistory(token.address, token.currentPrice));
+  }, [token.address]);
+
+  // Append new price to history when currentPrice updates (if different from last point)
+  useEffect(() => {
+    if (priceHistory.length > 0) {
+      const lastPrice = priceHistory[priceHistory.length - 1];
+      if (Math.abs(lastPrice - token.currentPrice) > 1e-12) {
+        setPriceHistory(prev => {
+          const updated = [...prev, token.currentPrice];
+          if (updated.length > 24) {
+            updated.shift();
+          }
+          return updated;
+        });
+      }
+    }
+  }, [token.currentPrice]);
+
+  // Local states for Set Price Alert form
+  const [alertTargetPrice, setAlertTargetPrice] = useState("");
+  const [alertCondition, setAlertCondition] = useState<"above" | "below">("above");
+
+  // Automatically suggest condition based on target price
+  useEffect(() => {
+    const target = parseFloat(alertTargetPrice) || 0;
+    const currentMicro = token.currentPrice * 1000000;
+    if (target > 0) {
+      if (target > currentMicro) {
+        setAlertCondition("above");
+      } else {
+        setAlertCondition("below");
+      }
+    }
+  }, [alertTargetPrice, token.currentPrice]);
+
+  const handleCreateAlert = (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetMicro = parseFloat(alertTargetPrice) || 0;
+    if (targetMicro <= 0) {
+      showToast("Please enter a valid target price.", "error");
+      return;
+    }
+
+    // Convert micro ETH to absolute ETH
+    const targetEth = targetMicro / 1000000;
+    
+    // UserId can be firebase uid, wallet address or local
+    const userId = firebaseUser?.uid || wallet.address || "local_user";
+
+    onAddPriceAlert({
+      userId,
+      tokenAddress: token.address,
+      tokenSymbol: token.symbol,
+      targetPrice: targetEth,
+      condition: alertCondition
+    });
+
+    setAlertTargetPrice("");
+  };
+
+  // Filter alerts for this token only
+  const tokenAlerts = priceAlerts ? priceAlerts.filter(a => a.tokenAddress.toLowerCase() === token.address.toLowerCase()) : [];
 
   // Re-estimate on input change
   useEffect(() => {
@@ -242,14 +351,51 @@ export default function TradePage({
             </div>
 
             {/* Price change info */}
-            <div className="grid grid-cols-2 gap-4 md:text-right font-mono text-xs border-t md:border-t-0 border-white/5 pt-3 md:pt-0 w-full md:w-auto">
-              <div>
-                <span className="block text-[9px] text-zinc-500 uppercase font-bold tracking-wider mb-0.5">Spot Price</span>
-                <span className="text-white font-bold text-sm">{(token.currentPrice * 1000000).toFixed(3)} μETH</span>
-              </div>
-              <div>
-                <span className="block text-[9px] text-zinc-500 uppercase font-bold tracking-wider mb-0.5">Market Cap</span>
-                <span className="text-brand-purple font-bold text-sm">{token.marketCap.toFixed(3)} ETH</span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 md:text-right font-mono text-xs border-t md:border-t-0 border-white/5 pt-3 md:pt-0 w-full md:w-auto">
+              {/* Sparkline Visual Component */}
+              {priceHistory.length > 0 && (
+                <div className="w-28 h-10 bg-zinc-950/40 px-2.5 py-1 rounded-xl border border-white/5 flex flex-col justify-between">
+                  <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider text-left block">
+                    Live Trend
+                  </span>
+                  <div className="w-full h-6">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={sparklineData}>
+                        <defs>
+                          <linearGradient id="sparklineGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={strokeColor} stopOpacity={0.2} />
+                            <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="price"
+                          stroke={strokeColor}
+                          strokeWidth={1.5}
+                          fill="url(#sparklineGrad)"
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 w-full sm:w-auto">
+                <div>
+                  <span className="block text-[9px] text-zinc-500 uppercase font-bold tracking-wider mb-0.5">Spot Price</span>
+                  <div className="flex items-center gap-1.5 md:justify-end">
+                    <span className="text-white font-bold text-sm">{(token.currentPrice * 1000000).toFixed(3)} μETH</span>
+                    <span className={`text-[10px] font-bold font-mono ${isUp ? "text-emerald-400" : "text-rose-400"}`}>
+                      {isUp ? "↑" : "↓"}{Math.abs(priceChangePct).toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <span className="block text-[9px] text-zinc-500 uppercase font-bold tracking-wider mb-0.5">Market Cap</span>
+                  <span className="text-brand-purple font-bold text-sm">{token.marketCap.toFixed(3)} ETH</span>
+                </div>
               </div>
             </div>
           </div>
@@ -469,6 +615,133 @@ export default function TradePage({
                 <span>Linear Reserve Synced</span>
               </div>
             </div>
+          </div>
+
+          {/* PRICE ALERTS SYSTEM */}
+          <div className="glass-panel p-6 rounded-2xl border border-white/5 bg-zinc-900/10 space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-brand-purple" />
+                <h3 className="text-xs font-bold font-display uppercase tracking-wider text-white">Price Alerts</h3>
+              </div>
+              {("Notification" in window) && (
+                Notification.permission !== "granted" ? (
+                  <button
+                    type="button"
+                    onClick={() => Notification.requestPermission()}
+                    className="text-[9px] font-mono font-bold bg-brand-purple/20 text-brand-purple px-2 py-1 rounded hover:bg-brand-purple/35 transition-all"
+                  >
+                    🔔 Enable Push
+                  </button>
+                ) : (
+                  <span className="text-[9px] font-mono text-zinc-500 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Push Enabled
+                  </span>
+                )
+              )}
+            </div>
+
+            <form onSubmit={handleCreateAlert} className="space-y-3">
+              <div>
+                <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">
+                  Target Price (μETH)
+                </label>
+                <div className="relative">
+                  <input
+                    id="alert-price-input"
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    placeholder={(token.currentPrice * 1000000).toFixed(3)}
+                    value={alertTargetPrice}
+                    onChange={(e) => setAlertTargetPrice(e.target.value)}
+                    required
+                    className="w-full bg-zinc-900 border border-white/5 rounded-xl p-3 pr-16 text-xs font-mono text-white focus:outline-none focus:border-brand-purple/40"
+                  />
+                  <span className="absolute right-3 top-3 text-[10px] text-zinc-500 font-bold font-mono">
+                    μETH
+                  </span>
+                </div>
+                <div className="flex justify-between mt-1 text-[9px] font-mono text-zinc-500">
+                  <span>Current: {(token.currentPrice * 1000000).toFixed(3)} μETH</span>
+                  {alertTargetPrice && (
+                    <span>= {(parseFloat(alertTargetPrice) / 1000000).toFixed(8)} ETH</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAlertCondition("above")}
+                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                    alertCondition === "above"
+                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                      : "bg-zinc-900/40 border-white/5 text-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  goes above ↑
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAlertCondition("below")}
+                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                    alertCondition === "below"
+                      ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
+                      : "bg-zinc-900/40 border-white/5 text-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  goes below ↓
+                </button>
+              </div>
+
+              <button
+                id="set-alert-btn"
+                type="submit"
+                className="w-full py-2.5 rounded-xl bg-brand-purple hover:bg-brand-purple-hover text-white font-bold font-display text-[11px] shadow-md transition-all flex items-center justify-center gap-1.5"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                <span>Create Alert</span>
+              </button>
+            </form>
+
+            {/* Existing price alerts list for this token */}
+            {tokenAlerts.length > 0 && (
+              <div className="border-t border-white/5 pt-3 space-y-2">
+                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Active Alerts ({tokenAlerts.length})</span>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {tokenAlerts.map((alert) => (
+                    <div key={alert.id} className="flex justify-between items-center p-2 rounded-lg bg-zinc-950/60 border border-white/5 text-[10px] font-mono">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[8px] font-bold px-1 py-0.2 rounded uppercase ${
+                            alert.condition === "above" ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                          }`}>
+                            {alert.condition === "above" ? "Above" : "Below"}
+                          </span>
+                          <span className="text-white font-bold">{(alert.targetPrice * 1000000).toFixed(3)} μETH</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[8px] text-zinc-500">
+                          <span>Set: {new Date(alert.createdAt).toLocaleTimeString()}</span>
+                          {alert.status === "triggered" && alert.triggeredAt && (
+                            <span className="text-emerald-500 font-bold">Triggered!</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <button
+                        type="button"
+                        onClick={() => onDeletePriceAlert(alert.id)}
+                        className="p-1.5 rounded-md hover:bg-white/5 text-zinc-500 hover:text-rose-500 transition-all"
+                        title="Delete Alert"
+                      >
+                        <Trash className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
         </div>

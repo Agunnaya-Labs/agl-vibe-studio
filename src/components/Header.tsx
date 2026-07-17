@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Wallet, Coins, RefreshCw, Layers, Database, Search, X, Bot, Palette, Cloud, CloudOff } from "lucide-react";
+import { Wallet, Coins, RefreshCw, Layers, Database, Search, X, Bot, Palette, Cloud, CloudOff, Menu } from "lucide-react";
 import { WalletState, Token, NFTCollection, AIAgent } from "../types";
 
 interface HeaderProps {
@@ -17,6 +17,7 @@ interface HeaderProps {
   firebaseUser?: any;
   onSignInWithGoogle?: () => void;
   onSignOut?: () => void;
+  onOpenSidebar?: () => void;
 }
 
 export default function Header({ 
@@ -33,7 +34,8 @@ export default function Header({
   onSelectTab,
   firebaseUser = null,
   onSignInWithGoogle,
-  onSignOut
+  onSignOut,
+  onOpenSidebar
 }: HeaderProps) {
   const shortAddress = wallet.isConnected && wallet.address
     ? `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`
@@ -101,6 +103,16 @@ export default function Header({
     <header id="app-header" className="sticky top-0 z-40 w-full h-16 border-b border-white/10 bg-[#050505]/50 backdrop-blur-md px-6 flex items-center justify-between shrink-0">
       {/* Search / Network info on desktop */}
       <div className="flex items-center gap-4">
+        {onOpenSidebar && (
+          <button
+            id="mobile-sidebar-hamburger"
+            onClick={onOpenSidebar}
+            className="md:hidden p-2 -ml-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-all"
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
         {/* Immersive UI Brand Title */}
         <div className="hidden lg:flex items-center gap-3">
           <h1 className="text-xs font-semibold tracking-wider text-white/80 uppercase">

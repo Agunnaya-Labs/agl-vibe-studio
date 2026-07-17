@@ -30,7 +30,7 @@ import GmailPage from "./pages/GmailPage";
 
 // Database & Utilities
 import { AgunnayaDatabase } from "./lib/db";
-import { WalletState, Token, NFTCollection, DAO, GameFiProject, AIAgent, Activity } from "./types";
+import { WalletState, Token, NFTCollection, DAO, GameFiProject, AIAgent, Activity, PriceAlert } from "./types";
 import { TerminalLine } from "./components/TerminalLog";
 import { BrainCircuit } from "lucide-react";
 
@@ -43,6 +43,7 @@ export default function App() {
   // Modals state
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isAIDrawerOpen, setIsAIDrawerOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Firebase Auth state
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
@@ -57,6 +58,7 @@ export default function App() {
   const [games, setGames] = useState<GameFiProject[]>([]);
   const [agents, setAgents] = useState<AIAgent[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [priceAlerts, setPriceAlerts] = useState<PriceAlert[]>([]);
 
   // Toast notifications
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
@@ -90,7 +92,82 @@ export default function App() {
     setGames(AgunnayaDatabase.getGameFi());
     setAgents(AgunnayaDatabase.getAgents());
     setActivities(AgunnayaDatabase.getActivities().reverse()); // newest first
+    setPriceAlerts(AgunnayaDatabase.getPriceAlerts());
   };
+
+  const handleAddPriceAlert = (alert: Omit<PriceAlert, "id" | "createdAt" | "status" | "triggeredAt">) => {
+    const newAlert = AgunnayaDatabase.addPriceAlert(alert);
+    setPriceAlerts(AgunnayaDatabase.getPriceAlerts());
+    showToast(`Price alert set for ${alert.tokenSymbol} at ${(alert.targetPrice * 1000000).toFixed(3)} μETH`, "success");
+    addTerminalLog("success", `ALERT_SET: Added alert for ${alert.tokenSymbol} ${alert.condition} ${(alert.targetPrice * 1000000).toFixed(3)} μETH.`);
+    
+    // Request permission if not granted
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  };
+
+  const handleDeletePriceAlert = async (id: string) => {
+    await AgunnayaDatabase.deletePriceAlert(id);
+    setPriceAlerts(AgunnayaDatabase.getPriceAlerts());
+    showToast("Price alert removed.", "info");
+    addTerminalLog("info", "ALERT_DELETED: Price alert removed successfully.");
+  };
+
+  // Monitor price changes and trigger alerts
+  useEffect(() => {
+    if (!tokens || tokens.length === 0 || priceAlerts.length === 0) return;
+
+    let updatedAny = false;
+    const currentAlerts = [...priceAlerts];
+
+    currentAlerts.forEach((alert) => {
+      if (alert.status !== "active") return;
+
+      const token = tokens.find(t => t.address.toLowerCase() === alert.tokenAddress.toLowerCase());
+      if (!token) return;
+
+      const currentPriceEth = token.currentPrice;
+      let triggered = false;
+
+      if (alert.condition === "above" && currentPriceEth >= alert.targetPrice) {
+        triggered = true;
+      } else if (alert.condition === "below" && currentPriceEth <= alert.targetPrice) {
+        triggered = true;
+      }
+
+      if (triggered) {
+        alert.status = "triggered";
+        alert.triggeredAt = Date.now();
+        updatedAny = true;
+
+        const targetPriceMicro = (alert.targetPrice * 1000000).toFixed(3);
+        const currentPriceMicro = (currentPriceEth * 1000000).toFixed(3);
+        const title = `🚨 Price Alert Triggered: ${alert.tokenSymbol}!`;
+        const body = `${alert.tokenSymbol} has gone ${alert.condition} your target of ${targetPriceMicro} μETH. Current: ${currentPriceMicro} μETH!`;
+
+        // Send browser notification
+        if ("Notification" in window && Notification.permission === "granted") {
+          try {
+            new Notification(title, { body });
+          } catch (e) {
+            console.warn("Iframe notification error:", e);
+          }
+        }
+
+        // Show toast notification
+        showToast(body, "success");
+
+        // Add to terminal logs
+        addTerminalLog("system", `PRICE_ALERT: ${alert.tokenSymbol} target reached! Target: ${targetPriceMicro} μETH, Current: ${currentPriceMicro} μETH.`);
+      }
+    });
+
+    if (updatedAny) {
+      setPriceAlerts(currentAlerts);
+      AgunnayaDatabase.savePriceAlerts(currentAlerts);
+    }
+  }, [tokens, priceAlerts]);
 
   useEffect(() => {
     refreshAllData();
@@ -525,6 +602,10 @@ export default function App() {
           terminalLogs={terminalLogs}
           addTerminalLog={addTerminalLog}
           showToast={showToast}
+          priceAlerts={priceAlerts}
+          onAddPriceAlert={handleAddPriceAlert}
+          onDeletePriceAlert={handleDeletePriceAlert}
+          firebaseUser={firebaseUser}
         />
       );
     }
@@ -618,6 +699,8 @@ export default function App() {
           <AnalyticsPage
             tokens={tokens}
             onSelectToken={(token) => setSelectedToken(token)}
+            priceAlerts={priceAlerts}
+            onDeletePriceAlert={handleDeletePriceAlert}
           />
         );
       case "admin":
@@ -735,6 +818,8 @@ export default function App() {
           }} 
           isAdmin={wallet.isConnected}
           onGoHome={() => setIsLaunched(false)}
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
         />
 
         {/* Main content viewport block */}
@@ -768,6 +853,7 @@ export default function App() {
             firebaseUser={firebaseUser}
             onSignInWithGoogle={handleSignInWithGoogle}
             onSignOut={handleSignOut}
+            onOpenSidebar={() => setIsMobileSidebarOpen(true)}
           />
 
           {/* Viewport contents scroll area */}

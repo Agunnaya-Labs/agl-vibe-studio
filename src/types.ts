@@ -196,3 +196,16 @@ export interface ReferralPayout {
   rewardAgl: number;
   timestamp: number;
 }
+
+export interface PriceAlert {
+  id: string;
+  userId: string;
+  tokenAddress: string;
+  tokenSymbol: string;
+  targetPrice: number; // Spot price in ETH
+  condition: "above" | "below";
+  status: "active" | "triggered";
+  createdAt: number;
+  triggeredAt: number | null;
+}
+

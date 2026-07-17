@@ -117,6 +117,18 @@ service cloud.firestore {
         && data.claimedRewardsAgl is number && data.claimedRewardsAgl >= 0;
     }
 
+    function isValidPriceAlert(data) {
+      return data.keys().hasAll(['id', 'userId', 'tokenAddress', 'tokenSymbol', 'targetPrice', 'condition', 'status', 'createdAt'])
+        && data.id is string && data.id.size() >= 1 && data.id.size() <= 64
+        && data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128
+        && data.tokenAddress is string && data.tokenAddress.size() >= 10 && data.tokenAddress.size() <= 64
+        && data.tokenSymbol is string && data.tokenSymbol.size() >= 1 && data.tokenSymbol.size() <= 10
+        && data.targetPrice is number && data.targetPrice >= 0
+        && data.condition is string && (data.condition == 'above' || data.condition == 'below')
+        && data.status is string && (data.status == 'active' || data.status == 'triggered')
+        && data.createdAt is number;
+    }
+
     // 4. Secure Collections Match Blocks
     
     // TOKENS COLLECTION
@@ -129,6 +141,20 @@ service cloud.firestore {
         incoming().diff(existing()).affectedKeys().hasOnly(['currentPrice', 'supply', 'marketCap', 'reserveEth', 'volume24h', 'creatorFeesEarned'])
       );
       allow delete: if isAdmin();
+    }
+
+    // PRICE ALERTS COLLECTION
+    match /price_alerts/{id} {
+      allow read: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidId(id) && isValidPriceAlert(incoming()) && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && isValidPriceAlert(incoming()) && (
+        isAdmin() || (
+          existing().userId == request.auth.uid &&
+          incoming().userId == request.auth.uid &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'triggeredAt'])
+        )
+      );
+      allow delete: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
     }
 
     // NFTS COLLECTION

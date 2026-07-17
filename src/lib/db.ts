@@ -1,5 +1,5 @@
-import { Token, NFTCollection, DAO, GameFiProject, AIAgent, WalletState, Activity, StakingPool, ReferralRecord, ReferralPayout } from "../types";
-import { doc, setDoc, getDocs, collection } from "firebase/firestore";
+import { Token, NFTCollection, DAO, GameFiProject, AIAgent, WalletState, Activity, StakingPool, ReferralRecord, ReferralPayout, PriceAlert } from "../types";
+import { doc, setDoc, getDocs, collection, deleteDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType, auth } from "./firebase";
 
 // EXACT BONDING CURVE MATH
@@ -458,6 +458,27 @@ export class AgunnayaDatabase {
         localStorage.setItem("agl_referral_records", JSON.stringify(merged));
       }
 
+      // 9. Sync Price Alerts
+      if (auth.currentUser) {
+        const alertsSnap = await getDocs(collection(db, "price_alerts"));
+        if (!alertsSnap.empty) {
+          const firestoreAlerts: PriceAlert[] = [];
+          alertsSnap.forEach(doc => firestoreAlerts.push(doc.data() as PriceAlert));
+          const localAlerts = this.getPriceAlerts();
+          const mergedAlerts = [...localAlerts];
+          firestoreAlerts.forEach(fa => {
+            const idx = mergedAlerts.findIndex(a => a.id.toLowerCase() === fa.id.toLowerCase());
+            if (idx !== -1) {
+              mergedAlerts[idx] = fa;
+            } else {
+              mergedAlerts.push(fa);
+            }
+          });
+          const userAlerts = mergedAlerts.filter(a => a.userId === auth.currentUser?.uid);
+          localStorage.setItem("agl_price_alerts", JSON.stringify(userAlerts));
+        }
+      }
+
       return true;
     } catch (err) {
       console.error("Firestore initial sync failed:", err);
@@ -791,6 +812,55 @@ export class AgunnayaDatabase {
     return { success: true, claimedAmount: amount };
   }
 
+  static getPriceAlerts(): PriceAlert[] {
+    const data = localStorage.getItem("agl_price_alerts");
+    if (!data) return [];
+    try {
+      return JSON.parse(data);
+    } catch {
+      return [];
+    }
+  }
+
+  static savePriceAlerts(alerts: PriceAlert[]) {
+    localStorage.setItem("agl_price_alerts", JSON.stringify(alerts));
+    alerts.forEach(a => {
+      this.saveToFirestore("price_alerts", a.id, a);
+    });
+  }
+
+  static addPriceAlert(alert: Omit<PriceAlert, "id" | "createdAt" | "status" | "triggeredAt">): PriceAlert {
+    const alerts = this.getPriceAlerts();
+    const newAlert: PriceAlert = {
+      ...alert,
+      id: "alert_" + Math.random().toString(36).substring(2, 11),
+      status: "active",
+      createdAt: Date.now(),
+      triggeredAt: null
+    };
+    alerts.unshift(newAlert);
+    this.savePriceAlerts(alerts);
+    return newAlert;
+  }
+
+  static async deletePriceAlert(id: string) {
+    const alerts = this.getPriceAlerts();
+    const updated = alerts.filter(a => a.id !== id);
+    localStorage.setItem("agl_price_alerts", JSON.stringify(updated));
+    if (auth.currentUser) {
+      try {
+        await deleteDoc(doc(db, "price_alerts", id));
+      } catch (err) {
+        console.warn("Firestore delete price_alerts failed:", err);
+        try {
+          handleFirestoreError(err, OperationType.DELETE, `price_alerts/${id}`);
+        } catch (e) {
+          console.error("Firestore delete rules validation failed: ", e);
+        }
+      }
+    }
+  }
+
   static resetDatabase() {
     localStorage.removeItem("agl_tokens");
     localStorage.removeItem("agl_nfts");
@@ -803,5 +873,6 @@ export class AgunnayaDatabase {
     localStorage.removeItem("agl_referral_records");
     localStorage.removeItem("agl_referral_payouts");
     localStorage.removeItem("agl_visitor_referrer");
+    localStorage.removeItem("agl_price_alerts");
   }
 }
