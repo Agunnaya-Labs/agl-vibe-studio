@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { Token, WalletState, Activity, PriceAlert } from "../types";
 import BondingCurveChart from "../components/BondingCurveChart";
 import TerminalLog, { TerminalLine } from "../components/TerminalLog";
@@ -25,7 +26,11 @@ import {
   Sparkles,
   Award,
   Bell,
-  Trash
+  Trash,
+  Settings,
+  Info,
+  Flame,
+  Check
 } from "lucide-react";
 
 interface TradePageProps {
@@ -60,6 +65,26 @@ export default function TradePage({
   const [estimatedOutput, setEstimatedOutput] = useState(0);
   const [tradeLoading, setTradeLoading] = useState(false);
   const [chartView, setChartView] = useState<"bonding" | "gecko">("bonding");
+
+  // Premium trading utility states
+  const [slippage, setSlippage] = useState<number>(1.0);
+  const [customSlippage, setCustomSlippage] = useState<string>("");
+  const [gasMode, setGasMode] = useState<"standard" | "fast" | "instant">("fast");
+  const [tokenBalance, setTokenBalance] = useState<number>(0);
+
+  // Load user token balance dynamically
+  const refreshLocalTokenBalance = () => {
+    if (wallet.isConnected && wallet.address) {
+      const balances = AgunnayaDatabase.getTokenBalances(wallet.address);
+      setTokenBalance(balances[token.address.toLowerCase()] || 0);
+    } else {
+      setTokenBalance(0);
+    }
+  };
+
+  useEffect(() => {
+    refreshLocalTokenBalance();
+  }, [wallet.isConnected, wallet.address, token.address]);
 
   // Local state for the sparkline price movement history
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
@@ -178,6 +203,24 @@ export default function TradePage({
     }
   }, [inputVal, tradeMode, token.supply]);
 
+  // Price Impact estimation: (Next Price - Current Price) / Current Price * 100
+  const getPriceImpact = () => {
+    const num = parseFloat(inputVal) || 0;
+    if (num <= 0) return 0;
+    
+    const currentPrice = token.currentPrice;
+    if (tradeMode === "buy") {
+      const tokensMinted = getTokensForEth(token.supply, num);
+      const nextSupply = token.supply + tokensMinted;
+      const nextPrice = getSpotPrice(nextSupply);
+      return ((nextPrice - currentPrice) / currentPrice) * 100;
+    } else {
+      const nextSupply = Math.max(0, token.supply - num);
+      const nextPrice = getSpotPrice(nextSupply);
+      return ((currentPrice - nextPrice) / currentPrice) * 100;
+    }
+  };
+
   // Execute Buy / Sell Order
   const handleExecuteTrade = (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,14 +233,34 @@ export default function TradePage({
 
     setTradeLoading(true);
 
+    // 1. Validate Token Balance for Sell Order
+    if (tradeMode === "sell" && num > tokenBalance) {
+      showToast(`Insufficient ${token.symbol} balance. You only have ${tokenBalance.toLocaleString()} ${token.symbol}.`, "error");
+      setTradeLoading(false);
+      return;
+    }
+
+    // 2. Slippage Validation Check
+    const currentPriceImpact = getPriceImpact();
+    const activeSlippage = slippage;
+    if (currentPriceImpact > activeSlippage) {
+      addTerminalLog("error", `Swap failed: Price impact (${currentPriceImpact.toFixed(2)}%) exceeds slippage tolerance (${activeSlippage.toFixed(2)}%)!`);
+      showToast(`Slippage limit exceeded: ${currentPriceImpact.toFixed(1)}% Impact > ${activeSlippage.toFixed(1)}% Limit. Adjust slippage tolerance or reduce amount.`, "error");
+      setTradeLoading(false);
+      return;
+    }
+
+    // 3. Gas Fee Calculations (Smart Accounts have zero-gas AA sponsorship)
+    const gasFee = wallet.isSmartAccount ? 0 : (gasMode === "standard" ? 0.0001 : gasMode === "fast" ? 0.0002 : 0.0004);
+
     if (tradeMode === "buy") {
-      if (num > wallet.balanceEth) {
-        showToast("Insufficient ETH balance.", "error");
+      if (num + gasFee > wallet.balanceEth) {
+        showToast("Insufficient ETH balance to cover amount and gas fees.", "error");
         setTradeLoading(false);
         return;
       }
 
-      addTerminalLog("info", `Broadcasting linear curve BUY order for ${num} ETH against ${token.name}...`);
+      addTerminalLog("info", `Broadcasting curve BUY order via ${gasMode.toUpperCase()} gas tier (${wallet.isSmartAccount ? "AA SPONSORED" : gasFee + " ETH"})...`);
 
       setTimeout(() => {
         const tokensMinted = getTokensForEth(token.supply, num);
@@ -224,13 +287,20 @@ export default function TradePage({
           token.volume24h = found.volume24h;
         }
 
-        // Deduct from wallet
+        // Deduct from wallet and record AGL token bonuses
         const updatedWallet = { 
           ...wallet, 
-          balanceEth: wallet.balanceEth - num,
+          balanceEth: wallet.balanceEth - num - gasFee,
           aglTokenBalance: wallet.aglTokenBalance + 10 // reward 10 AGL on trades!
         };
         AgunnayaDatabase.saveWallet(updatedWallet);
+
+        // Update persistent custom token balance
+        const balances = AgunnayaDatabase.getTokenBalances(wallet.address);
+        balances[token.address.toLowerCase()] = (balances[token.address.toLowerCase()] || 0) + tokensMinted;
+        AgunnayaDatabase.saveTokenBalances(wallet.address, balances);
+        refreshLocalTokenBalance();
+
         AgunnayaDatabase.addReferralPayout(wallet.address, "buy order", fee);
         onRefreshWallet();
 
@@ -253,8 +323,13 @@ export default function TradePage({
 
     } else {
       // Sell logic
-      // In our mock database, we can assume the user has the tokens they bought, or allow testing sells easily
-      addTerminalLog("info", `Initiating linear curve BURN/SELL execution for ${num} ${token.symbol}...`);
+      if (gasFee > wallet.balanceEth) {
+        showToast("Insufficient ETH balance to cover transaction gas fee.", "error");
+        setTradeLoading(false);
+        return;
+      }
+
+      addTerminalLog("info", `Initiating linear curve BURN/SELL execution for ${num} ${token.symbol} via ${gasMode.toUpperCase()} gas...`);
 
       setTimeout(() => {
         const { net, fee } = getEthReturnForTokens(token.supply, num);
@@ -280,13 +355,20 @@ export default function TradePage({
           token.volume24h = found.volume24h;
         }
 
-        // Add to wallet balance
+        // Add to wallet balance (net return minus gas fee)
         const updatedWallet = { 
           ...wallet, 
-          balanceEth: wallet.balanceEth + net,
+          balanceEth: wallet.balanceEth + net - gasFee,
           aglTokenBalance: wallet.aglTokenBalance + 5 // reward 5 AGL
         };
         AgunnayaDatabase.saveWallet(updatedWallet);
+
+        // Update persistent custom token balance
+        const balances = AgunnayaDatabase.getTokenBalances(wallet.address);
+        balances[token.address.toLowerCase()] = Math.max(0, (balances[token.address.toLowerCase()] || 0) - num);
+        AgunnayaDatabase.saveTokenBalances(wallet.address, balances);
+        refreshLocalTokenBalance();
+
         AgunnayaDatabase.addReferralPayout(wallet.address, "sell order", fee);
         onRefreshWallet();
 
@@ -476,36 +558,77 @@ export default function TradePage({
           
           {/* Interactive Buy/Sell Form */}
           <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-zinc-950 space-y-5 relative">
-            <div className="flex bg-zinc-900 p-1 rounded-xl">
+            
+            {/* Toggle-able animated tab interface */}
+            <div className="flex bg-zinc-900/80 p-1 rounded-xl relative border border-white/5 overflow-hidden">
               <button
                 id="trade-buy-tab"
+                type="button"
                 onClick={() => { setTradeMode("buy"); setInputVal(""); }}
-                className={`flex-1 py-2 rounded-lg text-xs font-semibold font-display transition-all ${
+                className={`relative flex-1 py-2.5 rounded-lg text-xs font-semibold font-display transition-all z-10 ${
                   tradeMode === "buy"
-                    ? "bg-emerald-500 text-black font-bold shadow"
+                    ? "text-emerald-950 font-bold"
                     : "text-zinc-400 hover:text-zinc-200"
                 }`}
               >
+                {tradeMode === "buy" && (
+                  <motion.div
+                    layoutId="activeTradeTab"
+                    className="absolute inset-0 bg-emerald-400 rounded-lg -z-10 shadow"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
                 Buy {token.symbol}
               </button>
               <button
                 id="trade-sell-tab"
+                type="button"
                 onClick={() => { setTradeMode("sell"); setInputVal(""); }}
-                className={`flex-1 py-2 rounded-lg text-xs font-semibold font-display transition-all ${
+                className={`relative flex-1 py-2.5 rounded-lg text-xs font-semibold font-display transition-all z-10 ${
                   tradeMode === "sell"
-                    ? "bg-rose-500 text-white font-bold shadow"
+                    ? "text-rose-950 font-bold"
                     : "text-zinc-400 hover:text-zinc-200"
                 }`}
               >
+                {tradeMode === "sell" && (
+                  <motion.div
+                    layoutId="activeTradeTab"
+                    className="absolute inset-0 bg-rose-400 rounded-lg -z-10 shadow"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
                 Sell {token.symbol}
               </button>
             </div>
 
             <form onSubmit={handleExecuteTrade} className="space-y-4">
+              {/* Amount input with balance helper and MAX shortcut buttons */}
               <div>
-                <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">
-                  {tradeMode === "buy" ? "Investment Amount (ETH)" : "Quantity to Burn (Tokens)"}
-                </label>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500">
+                    {tradeMode === "buy" ? "Investment Amount (ETH)" : "Quantity to Burn (Tokens)"}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (tradeMode === "buy") {
+                        const maxVal = Math.max(0, wallet.balanceEth - 0.002);
+                        setInputVal(maxVal > 0 ? maxVal.toFixed(4) : "0");
+                      } else {
+                        setInputVal(tokenBalance.toString());
+                      }
+                    }}
+                    className="text-[10px] text-zinc-400 hover:text-brand-purple hover:underline transition-colors flex items-center gap-1 font-mono font-semibold"
+                  >
+                    <span>Wallet Balance:</span>
+                    <span className="text-zinc-200">
+                      {tradeMode === "buy"
+                        ? `${wallet.balanceEth.toFixed(4)} ETH`
+                        : `${tokenBalance.toLocaleString()} ${token.symbol}`}
+                    </span>
+                  </button>
+                </div>
+
                 <div className="relative">
                   <input
                     id="trade-amount-input"
@@ -522,9 +645,133 @@ export default function TradePage({
                     {tradeMode === "buy" ? "ETH" : token.symbol}
                   </span>
                 </div>
+
+                {/* Quick percentage shortcuts */}
+                <div className="flex gap-1.5 mt-2">
+                  {[25, 50, 75, 100].map((pct) => (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={() => {
+                        if (tradeMode === "buy") {
+                          const base = wallet.balanceEth;
+                          if (pct === 100) {
+                            const maxVal = Math.max(0, base - 0.002);
+                            setInputVal(maxVal > 0 ? maxVal.toFixed(4) : "0");
+                          } else {
+                            setInputVal((base * (pct / 100)).toFixed(4));
+                          }
+                        } else {
+                          setInputVal(Math.floor(tokenBalance * (pct / 100)).toString());
+                        }
+                      }}
+                      className="flex-1 py-1 text-[9px] font-bold font-mono text-zinc-500 hover:text-zinc-200 bg-zinc-905/30 hover:bg-zinc-900 rounded-md border border-white/5 transition-all cursor-pointer"
+                    >
+                      {pct === 100 ? "MAX" : `${pct}%`}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Real-time estimation outputs */}
+              {/* Slippage Tolerance Panel */}
+              <div className="space-y-1.5 bg-zinc-900/30 p-3 rounded-xl border border-white/5">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider flex items-center gap-1 font-display">
+                    <Settings className="w-3.5 h-3.5 text-zinc-500" />
+                    Slippage Tolerance
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-zinc-400">
+                    {slippage.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="flex gap-1.5">
+                  {[0.5, 1.0, 3.0].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => {
+                        setSlippage(val);
+                        setCustomSlippage("");
+                      }}
+                      className={`flex-1 py-1 rounded-md text-[10px] font-mono font-bold transition-all ${
+                        slippage === val && !customSlippage
+                          ? "bg-brand-purple/20 text-brand-purple border border-brand-purple/30 font-extrabold"
+                          : "bg-zinc-900/40 text-zinc-500 hover:text-zinc-300 border border-transparent"
+                      }`}
+                    >
+                      {val}%
+                    </button>
+                  ))}
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0.1"
+                      max="50"
+                      placeholder="Custom"
+                      value={customSlippage}
+                      onChange={(e) => {
+                        setCustomSlippage(e.target.value);
+                        const num = parseFloat(e.target.value);
+                        if (num > 0) setSlippage(Math.min(50, num));
+                      }}
+                      className="w-full bg-zinc-900/40 text-center py-1 rounded-md text-[10px] font-mono text-zinc-300 focus:outline-none border border-white/5 placeholder-zinc-600 focus:border-brand-purple/30"
+                    />
+                  </div>
+                </div>
+                {slippage < 0.5 && (
+                  <p className="text-[9px] text-rose-400 font-mono leading-tight flex items-center gap-1 mt-1">
+                    <Info className="w-3 h-3 flex-shrink-0" /> Low slippage: Trade might revert.
+                  </p>
+                )}
+                {slippage > 5.0 && (
+                  <p className="text-[9px] text-amber-400 font-mono leading-tight flex items-center gap-1 mt-1">
+                    <Info className="w-3 h-3 flex-shrink-0" /> High slippage: High sandwich / frontrunning risk.
+                  </p>
+                )}
+              </div>
+
+              {/* Gas / Speed Settings Panel */}
+              <div className="space-y-1.5 bg-zinc-900/30 p-3 rounded-xl border border-white/5">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider flex items-center gap-1 font-display">
+                    <Flame className="w-3.5 h-3.5 text-zinc-500" />
+                    Transaction Speed (Gas)
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-zinc-400">
+                    {wallet.isSmartAccount ? "AA Sponsored" : `${gasMode === "standard" ? "0.0001" : gasMode === "fast" ? "0.0002" : "0.0004"} ETH`}
+                  </span>
+                </div>
+                {wallet.isSmartAccount ? (
+                  <div className="py-2 px-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[9px] text-emerald-400 font-mono leading-normal">
+                    ⚡ **Account Abstraction Active!** Gas fees are 100% sponsored by Agunnaya Labs Relayer.
+                  </div>
+                ) : (
+                  <div className="flex gap-1.5">
+                    {[
+                      { mode: "standard", label: "Std", gwei: "~15 Gwei" },
+                      { mode: "fast", label: "Fast", gwei: "~25 Gwei" },
+                      { mode: "instant", label: "Instant", gwei: "~50 Gwei" }
+                    ].map((g) => (
+                      <button
+                        key={g.mode}
+                        type="button"
+                        onClick={() => setGasMode(g.mode as any)}
+                        className={`flex-1 py-1 rounded-md text-[10px] font-mono font-bold transition-all flex flex-col items-center cursor-pointer ${
+                          gasMode === g.mode
+                            ? "bg-brand-blue/20 text-brand-blue border border-brand-blue/30 font-extrabold"
+                            : "bg-zinc-900/40 text-zinc-500 hover:text-zinc-300 border border-transparent"
+                        }`}
+                      >
+                        <span>{g.label}</span>
+                        <span className="text-[8px] opacity-60 font-medium">{g.gwei}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Real-time estimation outputs and Web3 fee telemetry */}
               <div className="bg-zinc-900/60 p-3.5 rounded-xl border border-white/5 space-y-2 text-xs font-mono">
                 <div className="flex justify-between text-zinc-400">
                   <span>Est. Output:</span>
@@ -532,6 +779,32 @@ export default function TradePage({
                     {estimatedOutput.toLocaleString(undefined, { maximumFractionDigits: 2 })} {tradeMode === "buy" ? token.symbol : "ETH"}
                   </span>
                 </div>
+
+                {/* Price Impact display */}
+                <div className="flex justify-between text-zinc-400">
+                  <span>Price Impact:</span>
+                  <span className={`font-bold ${
+                    getPriceImpact() < 1
+                      ? "text-emerald-400"
+                      : getPriceImpact() < 5
+                      ? "text-amber-400"
+                      : "text-rose-400"
+                  }`}>
+                    {inputVal ? `${getPriceImpact().toFixed(2)}%` : "0.00%"}
+                  </span>
+                </div>
+
+                {/* Minimum Output display */}
+                <div className="flex justify-between text-zinc-500 text-[10px]">
+                  <span>Min. Output (Slippage):</span>
+                  <span>
+                    {inputVal
+                      ? `${(estimatedOutput * (1 - slippage / 100)).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${tradeMode === "buy" ? token.symbol : "ETH"}`
+                      : `0.00 ${tradeMode === "buy" ? token.symbol : "ETH"}`}
+                  </span>
+                </div>
+
+                {/* Creator Fee */}
                 <div className="flex justify-between text-zinc-500 text-[10px]">
                   <span>Creator Fee (1%):</span>
                   <span>
@@ -540,8 +813,20 @@ export default function TradePage({
                       : `${((estimatedOutput) * 0.01).toFixed(6)} ETH`}
                   </span>
                 </div>
+
+                {/* Referral Split */}
                 <div className="flex justify-between text-zinc-500 text-[10px]">
-                  <span>AGL Trade Bonus:</span>
+                  <span>Referral Split (20%):</span>
+                  <span className="text-emerald-500">
+                    {tradeMode === "buy"
+                      ? `${((parseFloat(inputVal) || 0) * 0.01 * 0.20).toFixed(6)} ETH`
+                      : `${((estimatedOutput) * 0.01 * 0.20).toFixed(6)} ETH`}
+                  </span>
+                </div>
+
+                {/* AGL Rewards */}
+                <div className="flex justify-between text-zinc-500 text-[10px]">
+                  <span>AGL Trade Reward:</span>
                   <span className="text-brand-purple font-bold">+{tradeMode === "buy" ? "10 AGL" : "5 AGL"}</span>
                 </div>
               </div>
@@ -550,7 +835,7 @@ export default function TradePage({
                 id="trade-submit-btn"
                 type="submit"
                 disabled={tradeLoading || !inputVal || parseFloat(inputVal) <= 0}
-                className={`w-full py-3.5 rounded-xl font-bold font-display text-xs text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
+                className={`w-full py-3.5 rounded-xl font-bold font-display text-xs text-white shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   tradeMode === "buy"
                     ? "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/10 text-black font-bold"
                     : "bg-rose-500 hover:bg-rose-600 shadow-rose-500/10 text-white font-bold"

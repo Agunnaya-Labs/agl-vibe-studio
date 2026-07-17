@@ -595,6 +595,17 @@ export class AgunnayaDatabase {
     localStorage.setItem("agl_wallet", JSON.stringify(wallet));
   }
 
+  static getTokenBalances(address: string): { [tokenAddress: string]: number } {
+    if (!address) return {};
+    const data = localStorage.getItem(`agl_balances_${address.toLowerCase()}`);
+    return data ? JSON.parse(data) : {};
+  }
+
+  static saveTokenBalances(address: string, balances: { [tokenAddress: string]: number }) {
+    if (!address) return;
+    localStorage.setItem(`agl_balances_${address.toLowerCase()}`, JSON.stringify(balances));
+  }
+
   static getActivities(): Activity[] {
     const data = localStorage.getItem("agl_activities");
     if (!data) {
