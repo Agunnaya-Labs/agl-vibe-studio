@@ -539,10 +539,33 @@ export default function StakingComponent({
     }
   };
 
-  const isApproved = userAllowance >= ethers.parseEther(stakeAmount || "0");
+  let isApproved = false;
+  try {
+    const cleanedAmount = stakeAmount ? stakeAmount.trim() : "0";
+    if (cleanedAmount && !isNaN(Number(cleanedAmount)) && /^[0-9]*\.?[0-9]*$/.test(cleanedAmount) && cleanedAmount !== ".") {
+      isApproved = userAllowance >= ethers.parseEther(cleanedAmount);
+    } else {
+      isApproved = userAllowance >= 0n;
+    }
+  } catch (err) {
+    isApproved = false;
+  }
   const activePositions = userPositions.filter(p => !p.withdrawn);
   const totalUserStaked = activePositions.reduce((acc, p) => acc + p.amount, 0);
-  const totalPendingRewards = activePositions.reduce((acc, p) => acc + p.pendingReward, 0);
+  
+  // Calculate total pending rewards with real-time sandbox ticking fallback
+  const totalPendingRewards = activePositions.reduce((acc, p) => {
+    if (!web3Active || onWrongNetwork) {
+      // Sandbox mode: calculate dynamically based on time elapsed
+      const elapsedSec = currentTimeSec - p.startTime;
+      const aprDecimal = p.aprBasisPoints / 10000;
+      const timeFraction = elapsedSec / (365 * 24 * 3600);
+      const sandboxAcc = 100; // sandbox accelerator
+      const currentReward = p.amount * aprDecimal * timeFraction * sandboxAcc;
+      return acc + currentReward;
+    }
+    return acc + p.pendingReward;
+  }, 0);
 
   return (
     <div className="space-y-6">
@@ -826,8 +849,17 @@ export default function StakingComponent({
                     const timeRemaining = pos.unlockTime - currentTimeSec;
                     const daysLeft = Math.ceil(timeRemaining / (24 * 3600));
 
-                    // Dynamic reward visual representation using current pending rewards
-                    const estReward = pos.pendingReward;
+                    // Dynamic reward visual representation using current pending rewards with real-time sandbox fallback
+                    let estReward = pos.pendingReward;
+                    if (!web3Active || onWrongNetwork) {
+                      if (!pos.withdrawn) {
+                        const elapsedSec = currentTimeSec - pos.startTime;
+                        const aprDecimal = pos.aprBasisPoints / 10000;
+                        const timeFraction = elapsedSec / (365 * 24 * 3600);
+                        const sandboxAcc = 100;
+                        estReward = pos.amount * aprDecimal * timeFraction * sandboxAcc;
+                      }
+                    }
 
                     return (
                       <tr key={pos.id} className={`transition-all ${pos.withdrawn ? "opacity-45 bg-black/10" : "hover:bg-white/[0.02]"}`}>

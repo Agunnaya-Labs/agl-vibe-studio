@@ -887,17 +887,33 @@ export default function App() {
           </footer>
         </div>
 
-        {/* Floating AI Drawer activator */}
-        <button
-          id="floating-ai-activator"
-          onClick={() => setIsAIDrawerOpen(true)}
-          className="fixed bottom-6 right-6 p-4 rounded-full bg-brand-purple hover:bg-purple-600 text-white shadow-2xl shadow-brand-purple/40 hover:scale-105 transition-all z-40 flex items-center gap-2 group border border-white/10"
-        >
-          <BrainCircuit className="w-5 h-5 animate-pulse" />
-          <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 text-xs font-semibold font-display">
-            Prompt Advisor
-          </span>
-        </button>
+        {/* Floating AI Drawer activator & Tooltip wrapper */}
+        <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3 pointer-events-none">
+          {/* Persistent Prompt Assistant Tooltip */}
+          <div 
+            id="floating-ai-tooltip"
+            onClick={() => setIsAIDrawerOpen(true)}
+            className="bg-zinc-950/95 hover:bg-zinc-900 border border-brand-purple/40 hover:border-brand-purple text-zinc-100 text-[10px] md:text-xs font-semibold font-display px-3 py-2 rounded-xl shadow-xl shadow-black/85 flex items-center gap-2 transition-all duration-300 animate-tooltip-fade-in pointer-events-auto cursor-pointer select-none"
+            title="Open AI Studio Prompt Assistant"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-purple opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-purple"></span>
+            </span>
+            <span>Prompt Assistant</span>
+          </div>
+
+          <button
+            id="floating-ai-activator"
+            onClick={() => setIsAIDrawerOpen(true)}
+            className="p-4 rounded-full bg-brand-purple hover:bg-purple-600 text-white shadow-xl shadow-brand-purple/30 hover:shadow-2xl hover:shadow-brand-purple/70 hover:scale-110 active:scale-95 transition-all duration-300 flex items-center gap-2 group border border-white/10 pointer-events-auto"
+          >
+            <BrainCircuit className="w-5 h-5 animate-pulse" />
+            <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 text-xs font-semibold font-display">
+              Prompt Advisor
+            </span>
+          </button>
+        </div>
 
         {/* Drawer Panel */}
         <AIAssistantSidebar 

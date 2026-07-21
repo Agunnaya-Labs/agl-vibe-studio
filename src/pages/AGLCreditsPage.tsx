@@ -514,8 +514,14 @@ export default function AGLCreditsPage({
 
   const isApproved = () => {
     if (!burnAmount) return false;
-    const amountBig = ethers.parseEther(parseFloat(burnAmount).toString() || "0");
-    return currentAllowance >= amountBig;
+    const parsed = parseFloat(burnAmount);
+    if (isNaN(parsed) || parsed <= 0) return false;
+    try {
+      const amountBig = ethers.parseEther(parsed.toString());
+      return currentAllowance >= amountBig;
+    } catch (e) {
+      return false;
+    }
   };
 
   return (

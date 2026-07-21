@@ -614,10 +614,6 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
     setStakingLoading(false);
   };
 
-  const isApproved = userAllowance >= ethers.parseEther(stakeAmount || "0");
-  const totalUserStaked = userPositions
-    .filter(p => !p.withdrawn)
-    .reduce((sum, p) => sum + p.amount, 0);
 
   return (
     <div id="defi-suite-root" className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
