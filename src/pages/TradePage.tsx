@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Token, WalletState, Activity, PriceAlert } from "../types";
 import BondingCurveChart from "../components/BondingCurveChart";
 import TerminalLog, { TerminalLine } from "../components/TerminalLog";
+import ImageWithFallback from "../components/ImageWithFallback";
 import { LineChart, Line, ResponsiveContainer, YAxis, AreaChart, Area, Tooltip as RechartsTooltip } from "recharts";
 import { 
   getSpotPrice, 
@@ -411,7 +412,7 @@ export default function TradePage({
           {/* Header Stats bar */}
           <div className="glass-panel p-6 rounded-2xl border border-white/5 bg-zinc-900/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
             <div className="flex items-center gap-4">
-              <img src={token.logoUrl} alt={token.name} className="w-12 h-12 rounded-2xl object-cover border border-white/5 shadow-md" />
+              <ImageWithFallback src={token.logoUrl} alt={token.name} fallbackText={token.symbol} className="w-12 h-12 rounded-2xl object-cover border border-white/5 shadow-md" />
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-bold font-display text-white">{token.name}</h2>

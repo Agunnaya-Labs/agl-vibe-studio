@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { NFTCollection, WalletState, NFTItem } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
 import IPFSUploader from "../components/IPFSUploader";
+import ImageWithFallback from "../components/ImageWithFallback";
 import { Disc, Image, Sparkles, CheckCircle, Tag, Settings, Users, Plus, ShieldCheck } from "lucide-react";
 
 interface NFTStudioPageProps {
@@ -280,7 +281,7 @@ export default function NFTStudioPage({ wallet, collections, onRefreshNFTs, addT
             {collections.map((coll) => (
               <div key={coll.contractAddress} className="glass-panel rounded-2xl border border-white/5 p-4 bg-zinc-900/10 space-y-4">
                 <div className="flex gap-3">
-                  <img src={coll.imageUrl} alt={coll.name} className="w-12 h-12 rounded-xl object-cover border border-white/5 shrink-0" />
+                  <ImageWithFallback src={coll.imageUrl} alt={coll.name} fallbackText={coll.symbol} className="w-12 h-12 rounded-xl object-cover border border-white/5 shrink-0" />
                   <div>
                     <h4 className="font-display font-bold text-white text-xs">{coll.name}</h4>
                     <span className="block text-[10px] font-mono text-brand-purple font-bold uppercase">{coll.symbol} Collection</span>

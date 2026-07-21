@@ -1,6 +1,7 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { Token, PriceAlert } from "../types";
 import { TrendingUp, BarChart4, DollarSign, Wallet2, Award, ArrowUpRight, Bell, Trash, ExternalLink } from "lucide-react";
+import ImageWithFallback from "../components/ImageWithFallback";
 
 interface AnalyticsPageProps {
   tokens: Token[];
@@ -131,7 +132,7 @@ export default function AnalyticsPage({ tokens, onSelectToken, priceAlerts, onDe
                 <tr key={token.address} className="border-b border-white/5 last:border-0 hover:bg-white/2">
                   <td className="py-4 pl-2 font-bold text-brand-purple">#{index + 1}</td>
                   <td className="py-4 font-sans font-bold flex items-center gap-2">
-                    <img src={token.logoUrl} alt={token.name} className="w-6 h-6 rounded-lg object-cover border border-white/5" />
+                    <ImageWithFallback src={token.logoUrl} alt={token.name} fallbackText={token.symbol} className="w-6 h-6 rounded-lg object-cover border border-white/5" />
                     <div>
                       <span className="block text-white text-xs leading-none">{token.name}</span>
                       <span className="text-[10px] text-zinc-500 font-mono">{token.symbol}</span>
@@ -188,7 +189,7 @@ export default function AnalyticsPage({ tokens, onSelectToken, priceAlerts, onDe
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
                       {matchedToken ? (
-                        <img src={matchedToken.logoUrl} alt={alert.tokenSymbol} className="w-8 h-8 rounded-lg object-cover border border-white/5" />
+                        <ImageWithFallback src={matchedToken.logoUrl} alt={alert.tokenSymbol} fallbackText={alert.tokenSymbol} className="w-8 h-8 rounded-lg object-cover border border-white/5" />
                       ) : (
                         <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center font-bold text-xs">{alert.tokenSymbol}</div>
                       )}

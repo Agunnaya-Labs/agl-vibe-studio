@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { Wallet, Shield, Zap, Key } from "lucide-react";
 import { WalletState } from "../types";
 

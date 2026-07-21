@@ -311,6 +311,10 @@ export default function App() {
   // Load real on-chain balances for connected wallet from Base Mainnet
   const syncWalletBalancesOnChain = async (addr: string) => {
     if (!addr) return;
+    if (!ethers.isAddress(addr)) {
+      addTerminalLog("info", `SYNC: Skipping live on-chain balance query (address ${String(addr).slice(0, 8)}... is simulated/invalid).`);
+      return;
+    }
     try {
       addTerminalLog("info", `SYNC: Querying native and AGL balances for ${addr.slice(0, 8)}... on Base Mainnet.`);
       const baseProvider = new ethers.JsonRpcProvider("https://mainnet.base.org");
@@ -382,37 +386,43 @@ export default function App() {
     }
 
     if (!address) {
-      address = "0x" + Math.random().toString(16).substr(2, 40);
+      address = "0x" + Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join("");
       if (type === "smart") {
-        address = "0xAA" + Math.random().toString(16).substr(2, 38);
+        address = "0xAA" + Array.from({length: 38}, () => Math.floor(Math.random()*16).toString(16)).join("");
       }
       addTerminalLog("info", `WALLET_CONNECT: Injected provider not found/rejected. Generated demo address: ${address}`);
     }
 
-    // Now query real on-chain balance using JSON-RPC provider pointing to Base Mainnet!
-    try {
-      addTerminalLog("info", "FETCH_BALANCES: Querying native and AGL balances on Base Mainnet...");
-      const baseProvider = new ethers.JsonRpcProvider("https://mainnet.base.org");
-      const ethBalRaw = await baseProvider.getBalance(address);
-      ethBalance = parseFloat(ethers.formatEther(ethBalRaw));
-
-      // Query AGL balance
+    if (ethers.isAddress(address)) {
+      // Now query real on-chain balance using JSON-RPC provider pointing to Base Mainnet!
       try {
-        const aglTokenContract = new ethers.Contract(
-          "0xea1221b4d80a89bd8c75248fae7c176bd1854698", 
-          ["function balanceOf(address) external view returns (uint256)"], 
-          baseProvider
-        );
-        const aglBalRaw = await aglTokenContract.balanceOf(address);
-        aglBalance = parseFloat(ethers.formatEther(aglBalRaw));
-      } catch (e) {
-        addTerminalLog("info", "FETCH_BALANCES: AGL token balance query failed on-chain.");
-        aglBalance = 0;
+        addTerminalLog("info", "FETCH_BALANCES: Querying native and AGL balances on Base Mainnet...");
+        const baseProvider = new ethers.JsonRpcProvider("https://mainnet.base.org");
+        const ethBalRaw = await baseProvider.getBalance(address);
+        ethBalance = parseFloat(ethers.formatEther(ethBalRaw));
+
+        // Query AGL balance
+        try {
+          const aglTokenContract = new ethers.Contract(
+            "0xea1221b4d80a89bd8c75248fae7c176bd1854698", 
+            ["function balanceOf(address) external view returns (uint256)"], 
+            baseProvider
+          );
+          const aglBalRaw = await aglTokenContract.balanceOf(address);
+          aglBalance = parseFloat(ethers.formatEther(aglBalRaw));
+        } catch (e) {
+          addTerminalLog("info", "FETCH_BALANCES: AGL token balance query failed on-chain.");
+          aglBalance = 0;
+        }
+      } catch (err) {
+        addTerminalLog("error", "FETCH_BALANCES: Base Mainnet RPC connection failed. Falling back to default balances.");
+        ethBalance = 0.15;
+        aglBalance = 500;
       }
-    } catch (err) {
-      addTerminalLog("error", "FETCH_BALANCES: Base Mainnet RPC connection failed. Falling back to default balances.");
-      ethBalance = 0.0;
-      aglBalance = 0;
+    } else {
+      addTerminalLog("info", "FETCH_BALANCES: Simulated wallet address layout is invalid. Skipping RPC balance query.");
+      ethBalance = 0.15;
+      aglBalance = 500;
     }
 
     const newWallet: WalletState = {

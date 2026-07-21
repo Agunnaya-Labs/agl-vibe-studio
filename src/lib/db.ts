@@ -104,7 +104,7 @@ const SEED_TOKENS: Token[] = [
     reserveEth: getReserveAtSupply(12500000),
     volume24h: 24.15,
     category: "meme",
-    logoUrl: "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=128&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    logoUrl: "https://images.unsplash.com/photo-1618005198143-e52834644027?w=128&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
     socials: { website: "https://chadpad.xyz", twitter: "https://twitter.com/chadpad" },
     isVerified: false,
     vestingWeeks: 2,
@@ -486,13 +486,23 @@ export class AgunnayaDatabase {
     }
   }
 
-  static getTokens(): Token[] {
-    const data = localStorage.getItem("agl_tokens");
+  static safeParse<T>(key: string, fallback: T): T {
+    const data = localStorage.getItem(key);
     if (!data) {
-      localStorage.setItem("agl_tokens", JSON.stringify(SEED_TOKENS));
-      return SEED_TOKENS;
+      localStorage.setItem(key, JSON.stringify(fallback));
+      return fallback;
     }
-    return JSON.parse(data);
+    try {
+      return JSON.parse(data) as T;
+    } catch (err) {
+      console.warn(`Local storage key "${key}" was corrupted. Resetting to fallback seed.`, err);
+      localStorage.setItem(key, JSON.stringify(fallback));
+      return fallback;
+    }
+  }
+
+  static getTokens(): Token[] {
+    return this.safeParse<Token[]>("agl_tokens", SEED_TOKENS);
   }
 
   static saveTokens(tokens: Token[]) {
@@ -503,12 +513,7 @@ export class AgunnayaDatabase {
   }
 
   static getNFTs(): NFTCollection[] {
-    const data = localStorage.getItem("agl_nfts");
-    if (!data) {
-      localStorage.setItem("agl_nfts", JSON.stringify(SEED_NFTS));
-      return SEED_NFTS;
-    }
-    return JSON.parse(data);
+    return this.safeParse<NFTCollection[]>("agl_nfts", SEED_NFTS);
   }
 
   static saveNFTs(nfts: NFTCollection[]) {
@@ -519,12 +524,7 @@ export class AgunnayaDatabase {
   }
 
   static getDAOs(): DAO[] {
-    const data = localStorage.getItem("agl_daos");
-    if (!data) {
-      localStorage.setItem("agl_daos", JSON.stringify(SEED_DAOS));
-      return SEED_DAOS;
-    }
-    return JSON.parse(data);
+    return this.safeParse<DAO[]>("agl_daos", SEED_DAOS);
   }
 
   static saveDAOs(daos: DAO[]) {
@@ -535,12 +535,7 @@ export class AgunnayaDatabase {
   }
 
   static getGameFi(): GameFiProject[] {
-    const data = localStorage.getItem("agl_gamefi");
-    if (!data) {
-      localStorage.setItem("agl_gamefi", JSON.stringify(SEED_GAMEFI));
-      return SEED_GAMEFI;
-    }
-    return JSON.parse(data);
+    return this.safeParse<GameFiProject[]>("agl_gamefi", SEED_GAMEFI);
   }
 
   static saveGameFi(gamefi: GameFiProject[]) {
@@ -551,12 +546,7 @@ export class AgunnayaDatabase {
   }
 
   static getAgents(): AIAgent[] {
-    const data = localStorage.getItem("agl_agents");
-    if (!data) {
-      localStorage.setItem("agl_agents", JSON.stringify(SEED_AGENTS));
-      return SEED_AGENTS;
-    }
-    return JSON.parse(data);
+    return this.safeParse<AIAgent[]>("agl_agents", SEED_AGENTS);
   }
 
   static saveAgents(agents: AIAgent[]) {
@@ -567,12 +557,7 @@ export class AgunnayaDatabase {
   }
 
   static getStaking(): StakingPool[] {
-    const data = localStorage.getItem("agl_staking");
-    if (!data) {
-      localStorage.setItem("agl_staking", JSON.stringify(SEED_STAKING));
-      return SEED_STAKING;
-    }
-    return JSON.parse(data);
+    return this.safeParse<StakingPool[]>("agl_staking", SEED_STAKING);
   }
 
   static saveStaking(pools: StakingPool[]) {
@@ -583,12 +568,7 @@ export class AgunnayaDatabase {
   }
 
   static getWallet(): WalletState {
-    const data = localStorage.getItem("agl_wallet");
-    if (!data) {
-      localStorage.setItem("agl_wallet", JSON.stringify(DEFAULT_WALLET));
-      return DEFAULT_WALLET;
-    }
-    return JSON.parse(data);
+    return this.safeParse<WalletState>("agl_wallet", DEFAULT_WALLET);
   }
 
   static saveWallet(wallet: WalletState) {
@@ -597,8 +577,8 @@ export class AgunnayaDatabase {
 
   static getTokenBalances(address: string): { [tokenAddress: string]: number } {
     if (!address) return {};
-    const data = localStorage.getItem(`agl_balances_${address.toLowerCase()}`);
-    return data ? JSON.parse(data) : {};
+    const key = `agl_balances_${address.toLowerCase()}`;
+    return this.safeParse<{ [tokenAddress: string]: number }>(key, {});
   }
 
   static saveTokenBalances(address: string, balances: { [tokenAddress: string]: number }) {
@@ -607,12 +587,8 @@ export class AgunnayaDatabase {
   }
 
   static getActivities(): Activity[] {
-    const data = localStorage.getItem("agl_activities");
-    if (!data) {
-      localStorage.setItem("agl_activities", JSON.stringify(SEED_ACTIVITIES));
-      return SEED_ACTIVITIES;
-    }
-    return JSON.parse(data).sort((a: Activity, b: Activity) => b.timestamp - a.timestamp);
+    const items = this.safeParse<Activity[]>("agl_activities", SEED_ACTIVITIES);
+    return [...items].sort((a: Activity, b: Activity) => b.timestamp - a.timestamp);
   }
 
   static saveActivities(activities: Activity[]) {
@@ -643,11 +619,7 @@ export class AgunnayaDatabase {
   }
 
   static getReferralRecords(): ReferralRecord[] {
-    const data = localStorage.getItem("agl_referral_records");
-    if (!data) {
-      return [];
-    }
-    return JSON.parse(data);
+    return this.safeParse<ReferralRecord[]>("agl_referral_records", []);
   }
 
   static saveReferralRecords(records: ReferralRecord[]) {
@@ -742,9 +714,7 @@ export class AgunnayaDatabase {
   }
 
   static getPayouts(): ReferralPayout[] {
-    const data = localStorage.getItem("agl_referral_payouts");
-    if (!data) return [];
-    return JSON.parse(data);
+    return this.safeParse<ReferralPayout[]>("agl_referral_payouts", []);
   }
 
   static savePayouts(payouts: ReferralPayout[]) {

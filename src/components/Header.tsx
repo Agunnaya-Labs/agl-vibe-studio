@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Wallet, Coins, RefreshCw, Layers, Database, Search, X, Bot, Palette, Cloud, CloudOff, Menu } from "lucide-react";
 import { WalletState, Token, NFTCollection, AIAgent } from "../types";
+import ImageWithFallback from "./ImageWithFallback";
 
 interface HeaderProps {
   wallet: WalletState;
@@ -215,7 +216,7 @@ export default function Header({
                       >
                         <div className="flex items-center gap-2">
                           {token.logoUrl ? (
-                            <img src={token.logoUrl} alt={token.name} className="w-6 h-6 rounded-md object-cover border border-white/10" referrerPolicy="no-referrer" />
+                            <ImageWithFallback src={token.logoUrl} alt={token.name} fallbackText={token.symbol} className="w-6 h-6 rounded-md object-cover border border-white/10" referrerPolicy="no-referrer" />
                           ) : (
                             <div className="w-6 h-6 rounded-md bg-zinc-800 border border-white/10 flex items-center justify-center font-bold text-[10px] text-zinc-400">
                               {token.symbol.slice(0, 2)}
@@ -254,7 +255,7 @@ export default function Header({
                       >
                         <div className="flex items-center gap-2">
                           {nft.imageUrl ? (
-                            <img src={nft.imageUrl} alt={nft.name} className="w-6 h-6 rounded-md object-cover border border-white/10" referrerPolicy="no-referrer" />
+                            <ImageWithFallback src={nft.imageUrl} alt={nft.name} fallbackText={nft.symbol} className="w-6 h-6 rounded-md object-cover border border-white/10" referrerPolicy="no-referrer" />
                           ) : (
                             <div className="w-6 h-6 rounded-md bg-zinc-800 border border-white/10 flex items-center justify-center font-bold text-[10px] text-zinc-400">
                               <Palette className="w-3.5 h-3.5" />
@@ -293,7 +294,7 @@ export default function Header({
                       >
                         <div className="flex items-center gap-2">
                           {agent.avatarUrl ? (
-                            <img src={agent.avatarUrl} alt={agent.name} className="w-6 h-6 rounded-md object-cover border border-white/10" referrerPolicy="no-referrer" />
+                            <ImageWithFallback src={agent.avatarUrl} alt={agent.name} fallbackText={agent.symbol} className="w-6 h-6 rounded-md object-cover border border-white/10" referrerPolicy="no-referrer" />
                           ) : (
                             <div className="w-6 h-6 rounded-md bg-zinc-800 border border-white/10 flex items-center justify-center text-zinc-400">
                               <Bot className="w-3.5 h-3.5" />
@@ -365,9 +366,10 @@ export default function Header({
               <span className="text-[10px] hidden lg:inline">Cloud Sync Active</span>
             </div>
             {firebaseUser.photoURL ? (
-              <img 
+              <ImageWithFallback 
                 src={firebaseUser.photoURL} 
                 alt={firebaseUser.displayName || "Google User"} 
+                fallbackText={firebaseUser.displayName}
                 className="w-5 h-5 rounded-full border border-white/10"
                 referrerPolicy="no-referrer"
               />

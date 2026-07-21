@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import agunnayaLogo from "../assets/images/agunnaya_logo_1782747905258.jpg";
 import { 
   LayoutDashboard, 
   Sparkles, 
@@ -113,7 +114,7 @@ export default function Sidebar({
           <div className="h-16 flex items-center justify-between px-6 border-b border-white/10 bg-[#0a0a0a]/60">
             <div className="flex items-center gap-2">
               <img
-                src="/src/assets/images/agunnaya_logo_1782747905258.jpg"
+                src={agunnayaLogo}
                 alt="AL"
                 className="w-8 h-8 rounded-lg object-cover shadow-lg shadow-blue-500/20 border border-white/10"
                 referrerPolicy="no-referrer"

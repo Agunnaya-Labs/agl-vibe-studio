@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { AIAgent, WalletState } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
+import ImageWithFallback from "../components/ImageWithFallback";
 import { 
   chatWithAgentAdvancedAI, 
   optimizeSystemPromptAI, 
@@ -621,7 +622,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                   {/* Chat Panel Header */}
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-white/5 pb-4 gap-3">
                     <div className="flex items-center gap-3">
-                      <img src={activeChatAgent.avatarUrl} alt={activeChatAgent.name} className="w-10 h-10 rounded-xl object-cover border border-white/5" />
+                      <ImageWithFallback src={activeChatAgent.avatarUrl} alt={activeChatAgent.name} fallbackText={activeChatAgent.symbol} className="w-10 h-10 rounded-xl object-cover border border-white/5" />
                       <div>
                         <h3 className="text-sm font-bold text-white font-display leading-tight">{activeChatAgent.name} Chat</h3>
                         <span className="text-[10px] font-mono font-bold text-brand-purple uppercase">Directives Node Active</span>
@@ -878,7 +879,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                   {agents.map((agent) => (
                     <div key={agent.id} className="glass-panel rounded-2xl border border-white/5 p-4 bg-zinc-900/10 space-y-4">
                       <div className="flex gap-3">
-                        <img src={agent.avatarUrl} alt={agent.name} className="w-12 h-12 rounded-xl object-cover border border-white/5 shrink-0" />
+                      <ImageWithFallback src={agent.avatarUrl} alt={agent.name} fallbackText={agent.symbol} className="w-12 h-12 rounded-xl object-cover border border-white/5 shrink-0" />
                         <div>
                           <h4 className="font-display font-bold text-white text-xs">{agent.name}</h4>
                           <span className="block text-[9px] font-mono text-brand-purple font-bold uppercase">{agent.symbol} Agent</span>

@@ -1,5 +1,6 @@
 import { WalletState, Token, NFTCollection, DAO, GameFiProject, AIAgent, Activity } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
+import ImageWithFallback from "../components/ImageWithFallback";
 import { 
   Briefcase, 
   Layers, 
@@ -190,7 +191,7 @@ export default function DashboardPage({
                 {userTokens.filter(t => t.creator === wallet.address).map((t) => (
                   <div key={t.address} className="flex justify-between items-center p-3 bg-zinc-950 rounded-xl border border-white/5">
                     <div className="flex items-center gap-3">
-                      <img src={t.logoUrl} alt={t.name} className="w-8 h-8 rounded-lg object-cover" />
+                      <ImageWithFallback src={t.logoUrl} alt={t.name} fallbackText={t.symbol} className="w-8 h-8 rounded-lg object-cover" />
                       <div>
                         <span className="block text-xs font-semibold text-white">{t.name} ({t.symbol})</span>
                         <span className="block text-[9px] font-mono text-zinc-500">Token Contract · {t.address.slice(0, 8)}...</span>
@@ -222,7 +223,7 @@ export default function DashboardPage({
                 {userAgents.filter(a => a.creator === wallet.address).map((a) => (
                   <div key={a.id} className="flex justify-between items-center p-3 bg-zinc-950 rounded-xl border border-white/5">
                     <div className="flex items-center gap-3">
-                      <img src={a.avatarUrl} alt={a.name} className="w-8 h-8 rounded-lg object-cover" />
+                      <ImageWithFallback src={a.avatarUrl} alt={a.name} fallbackText={a.symbol} className="w-8 h-8 rounded-lg object-cover" />
                       <div>
                         <span className="block text-xs font-semibold text-white">{a.name} ({a.symbol})</span>
                         <span className="block text-[9px] font-mono text-zinc-500">Autonomous Agent · SENT_CORE</span>
@@ -257,7 +258,7 @@ export default function DashboardPage({
                   return (
                     <div key={t.address} className="flex justify-between items-center p-2.5 bg-black/30 rounded-xl border border-white/5 text-xs">
                       <div className="flex items-center gap-1.5">
-                        {t.logoUrl && <img src={t.logoUrl} alt={t.symbol} className="w-4 h-4 rounded-full object-cover" />}
+                        {t.logoUrl && <ImageWithFallback src={t.logoUrl} alt={t.symbol} fallbackText={t.symbol} className="w-4 h-4 rounded-full object-cover" />}
                         <span className="font-bold text-white font-mono">{t.symbol}</span>
                       </div>
                       <span className="font-mono text-zinc-300">{bal.toLocaleString(undefined, { maximumFractionDigits: 2 })} {t.symbol}</span>
@@ -280,7 +281,7 @@ export default function DashboardPage({
                 <div className="space-y-2">
                   {userNFTs.map(n => n.items.map(item => (
                     <div key={item.id} className="flex items-center gap-2.5 p-2 bg-black/30 rounded-xl border border-white/5 text-xs">
-                      <img src={item.imageUrl} alt={item.name} className="w-7 h-7 rounded object-cover" />
+                      <ImageWithFallback src={item.imageUrl} alt={item.name} fallbackText={n.name} className="w-7 h-7 rounded object-cover" />
                       <div>
                         <span className="block font-bold text-white">{item.name}</span>
                         <span className="block text-[8px] text-zinc-500 font-mono">{n.name} · #{item.id}</span>

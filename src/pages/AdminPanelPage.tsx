@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Token, WalletState } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
+import ImageWithFallback from "../components/ImageWithFallback";
 import { 
   Settings, 
   ShieldAlert, 
@@ -363,7 +364,7 @@ export default function AdminPanelPage({
               {tokens.map((token) => (
                 <div key={token.address} className="flex justify-between items-center bg-zinc-950 p-2.5 rounded-xl border border-white/5 text-xs">
                   <div className="flex items-center gap-2">
-                    <img src={token.logoUrl} alt={token.name} className="w-6 h-6 rounded-lg object-cover" />
+                    <ImageWithFallback src={token.logoUrl} alt={token.name} fallbackText={token.symbol} className="w-6 h-6 rounded-lg object-cover" />
                     <div>
                       <span className="block text-[11px] font-bold text-zinc-200 leading-none">{token.name}</span>
                       <span className="text-[9px] font-mono text-zinc-500">{token.symbol}</span>
@@ -475,7 +476,7 @@ export default function AdminPanelPage({
                       <span className="text-zinc-200 font-bold flex items-center gap-1.5">
                         {selectedTokenObject ? (
                           <>
-                            <img src={selectedTokenObject.logoUrl} className="w-4 h-4 rounded-full object-cover" />
+                            <ImageWithFallback src={selectedTokenObject.logoUrl} alt={selectedTokenObject.symbol} fallbackText={selectedTokenObject.symbol} className="w-4 h-4 rounded-full object-cover" />
                             {selectedTokenObject.symbol}
                           </>
                         ) : (
@@ -679,7 +680,7 @@ export default function AdminPanelPage({
                   tokens.map(token => (
                     <div key={token.address} className="bg-zinc-950 p-2.5 rounded-xl border border-white/5 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <img src={token.logoUrl} className="w-5 h-5 rounded-md object-cover" />
+                        <ImageWithFallback src={token.logoUrl} alt={token.name} fallbackText={token.symbol} className="w-5 h-5 rounded-md object-cover" />
                         <div className="min-w-0">
                           <span className="block text-[10px] font-bold text-zinc-200 truncate leading-tight">{token.name}</span>
                           <span className="text-[8px] font-mono text-zinc-500 leading-none">Proxy: {token.address.slice(0, 8)}...</span>
