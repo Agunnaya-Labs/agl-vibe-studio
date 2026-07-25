@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { Wallet, Coins, RefreshCw, Layers, Database, Search, X, Bot, Palette, Cloud, CloudOff } from "lucide-react";
+import { Wallet, Coins, RefreshCw, Layers, Database, Search, X, Bot, Palette, Cloud, CloudOff, Menu } from "lucide-react";
 import { WalletState, Token, NFTCollection, AIAgent } from "../types";
+import ImageWithFallback from "./ImageWithFallback";
 
 interface HeaderProps {
   wallet: WalletState;
@@ -17,6 +18,7 @@ interface HeaderProps {
   firebaseUser?: any;
   onSignInWithGoogle?: () => void;
   onSignOut?: () => void;
+  onOpenSidebar?: () => void;
 }
 
 export default function Header({ 
@@ -33,7 +35,8 @@ export default function Header({
   onSelectTab,
   firebaseUser = null,
   onSignInWithGoogle,
-  onSignOut
+  onSignOut,
+  onOpenSidebar
 }: HeaderProps) {
   const shortAddress = wallet.isConnected && wallet.address
     ? `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`
@@ -101,6 +104,16 @@ export default function Header({
     <header id="app-header" className="sticky top-0 z-40 w-full h-16 border-b border-white/10 bg-[#050505]/50 backdrop-blur-md px-6 flex items-center justify-between shrink-0">
       {/* Search / Network info on desktop */}
       <div className="flex items-center gap-4">
+        {onOpenSidebar && (
+          <button
+            id="mobile-sidebar-hamburger"
+            onClick={onOpenSidebar}
+            className="md:hidden p-2 -ml-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-all"
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
         {/* Immersive UI Brand Title */}
         <div className="hidden lg:flex items-center gap-3">
           <h1 className="text-xs font-semibold tracking-wider text-white/80 uppercase">
@@ -136,10 +149,14 @@ export default function Header({
         </div>
 
         {/* Live Gas Monitor */}
-        <div className="hidden md:flex items-center gap-2 text-zinc-500 text-xs font-mono">
-          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]"></span>
-          <span className="text-[10px]">GAS: 0.01 gwei</span>
-        </div>
+        <button
+          id="header-gas-monitor"
+          onClick={() => onSelectTab("gas-dashboard")}
+          className="hidden md:flex items-center gap-2 text-zinc-500 hover:text-brand-purple hover:bg-white/5 px-2 py-1 rounded-md transition-all text-xs font-mono group"
+        >
+          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981] group-hover:bg-brand-purple group-hover:shadow-[0_0_8px_rgba(139,92,246,0.6)]"></span>
+          <span className="text-[10px] font-bold">GAS: 0.01 gwei</span>
+        </button>
       </div>
 
       {/* Global Search Component */}
@@ -199,7 +216,7 @@ export default function Header({
                       >
                         <div className="flex items-center gap-2">
                           {token.logoUrl ? (
-                            <img src={token.logoUrl} alt={token.name} className="w-6 h-6 rounded-md object-cover border border-white/10" referrerPolicy="no-referrer" />
+                            <ImageWithFallback src={token.logoUrl} alt={token.name} fallbackText={token.symbol} className="w-6 h-6 rounded-md object-cover border border-white/10" referrerPolicy="no-referrer" />
                           ) : (
                             <div className="w-6 h-6 rounded-md bg-zinc-800 border border-white/10 flex items-center justify-center font-bold text-[10px] text-zinc-400">
                               {token.symbol.slice(0, 2)}
@@ -238,7 +255,7 @@ export default function Header({
                       >
                         <div className="flex items-center gap-2">
                           {nft.imageUrl ? (
-                            <img src={nft.imageUrl} alt={nft.name} className="w-6 h-6 rounded-md object-cover border border-white/10" referrerPolicy="no-referrer" />
+                            <ImageWithFallback src={nft.imageUrl} alt={nft.name} fallbackText={nft.symbol} className="w-6 h-6 rounded-md object-cover border border-white/10" referrerPolicy="no-referrer" />
                           ) : (
                             <div className="w-6 h-6 rounded-md bg-zinc-800 border border-white/10 flex items-center justify-center font-bold text-[10px] text-zinc-400">
                               <Palette className="w-3.5 h-3.5" />
@@ -277,7 +294,7 @@ export default function Header({
                       >
                         <div className="flex items-center gap-2">
                           {agent.avatarUrl ? (
-                            <img src={agent.avatarUrl} alt={agent.name} className="w-6 h-6 rounded-md object-cover border border-white/10" referrerPolicy="no-referrer" />
+                            <ImageWithFallback src={agent.avatarUrl} alt={agent.name} fallbackText={agent.symbol} className="w-6 h-6 rounded-md object-cover border border-white/10" referrerPolicy="no-referrer" />
                           ) : (
                             <div className="w-6 h-6 rounded-md bg-zinc-800 border border-white/10 flex items-center justify-center text-zinc-400">
                               <Bot className="w-3.5 h-3.5" />
@@ -310,11 +327,11 @@ export default function Header({
             <button
               id="faucet-button"
               onClick={onFundWallet}
-              title="Get free mock ETH and AGL for testing"
+              title="Synchronize balances with Base Mainnet"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-mono font-medium transition-all"
             >
               <RefreshCw className="w-3.5 h-3.5 animate-spin-slow" />
-              <span>Faucet (+1 ETH)</span>
+              <span>Sync Wallet</span>
             </button>
 
             {/* AGL Balance display */}
@@ -322,6 +339,13 @@ export default function Header({
               <Coins className="w-4 h-4 text-[#0052FF]" />
               <span className="text-zinc-400">AGL:</span>
               <span className="text-white font-bold">{wallet.aglTokenBalance.toLocaleString()}</span>
+            </div>
+
+            {/* AGL Credits display */}
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-xs font-mono shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+              <Bot className="w-4 h-4 text-emerald-400 animate-pulse" />
+              <span className="text-zinc-400">Credits:</span>
+              <span className="text-white font-bold">{(wallet.aglCredits || 0).toLocaleString()}</span>
             </div>
 
             {/* ETH Balance display */}
@@ -342,9 +366,10 @@ export default function Header({
               <span className="text-[10px] hidden lg:inline">Cloud Sync Active</span>
             </div>
             {firebaseUser.photoURL ? (
-              <img 
+              <ImageWithFallback 
                 src={firebaseUser.photoURL} 
                 alt={firebaseUser.displayName || "Google User"} 
+                fallbackText={firebaseUser.displayName}
                 className="w-5 h-5 rounded-full border border-white/10"
                 referrerPolicy="no-referrer"
               />

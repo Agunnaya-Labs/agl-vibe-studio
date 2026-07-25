@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Token } from "../types";
+import ImageWithFallback from "../components/ImageWithFallback";
 import { Search, Star, StarOff, TrendingUp, Sparkles, Filter, Percent } from "lucide-react";
 
 interface ExplorePageProps {
@@ -135,7 +136,7 @@ export default function ExplorePage({ tokens, onSelectToken }: ExplorePageProps)
 
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
-                    <img src={t.logoUrl} alt={t.name} className="w-10 h-10 rounded-xl object-cover border border-white/5" />
+                    <ImageWithFallback src={t.logoUrl} alt={t.name} fallbackText={t.symbol} className="w-10 h-10 rounded-xl object-cover border border-white/5" />
                     <div>
                       <div className="flex items-center gap-1.5">
                         <h3 className="font-display font-bold text-white text-sm group-hover:text-brand-purple transition-colors leading-tight">{t.name}</h3>

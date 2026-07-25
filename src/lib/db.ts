@@ -1,5 +1,5 @@
-import { Token, NFTCollection, DAO, GameFiProject, AIAgent, WalletState, Activity, StakingPool, ReferralRecord, ReferralPayout } from "../types";
-import { doc, setDoc, getDocs, collection } from "firebase/firestore";
+import { Token, NFTCollection, DAO, GameFiProject, AIAgent, WalletState, Activity, StakingPool, ReferralRecord, ReferralPayout, PriceAlert } from "../types";
+import { doc, setDoc, getDocs, collection, deleteDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType, auth } from "./firebase";
 
 // EXACT BONDING CURVE MATH
@@ -49,7 +49,7 @@ export function getEthReturnForTokens(currentSupply: number, tokensToSell: numbe
 // INITIAL SEED DATA
 const SEED_TOKENS: Token[] = [
   {
-    address: "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0",
+    address: "0xea1221b4d80a89bd8c75248fae7c176bd1854698",
     name: "Agunnaya Utility Token",
     symbol: "AGL",
     description: "The official utility token of Agunnaya Labs Studio. Used to unlock premium templates, pay for autonomous AI Agent triggers at a discount, secure governance rights, and stake for premium yield.",
@@ -104,7 +104,7 @@ const SEED_TOKENS: Token[] = [
     reserveEth: getReserveAtSupply(12500000),
     volume24h: 24.15,
     category: "meme",
-    logoUrl: "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=128&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    logoUrl: "https://images.unsplash.com/photo-1618005198143-e52834644027?w=128&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
     socials: { website: "https://chadpad.xyz", twitter: "https://twitter.com/chadpad" },
     isVerified: false,
     vestingWeeks: 2,
@@ -163,7 +163,7 @@ const SEED_DAOS: DAO[] = [
     symbol: "BBG",
     description: "A community DAO designed to fund open-source development tools, public goods, and meme generators exclusively on Base. Supported by Agunnaya Labs multi-sig.",
     creator: "0xBBGCreator",
-    governanceTokenAddress: "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0", // AGL token as gov token
+    governanceTokenAddress: "0xea1221b4d80a89bd8c75248fae7c176bd1854698", // AGL token as gov token
     treasuryBalanceEth: 25.5,
     memberCount: 142,
     proposals: [
@@ -269,13 +269,13 @@ const SEED_AGENTS: AIAgent[] = [
 ];
 
 const SEED_STAKING: StakingPool[] = [
-  { id: "s-1", tokenName: "Agunnaya Labs Token", tokenSymbol: "AGL", tokenAddress: "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0", apr: 38.5, tvlEth: 12.8, stakedBalance: 0, earnedRewards: 0, lockPeriodDays: 7 },
+  { id: "s-1", tokenName: "Agunnaya Labs Token", tokenSymbol: "AGL", tokenAddress: "0xea1221b4d80a89bd8c75248fae7c176bd1854698", apr: 38.5, tvlEth: 12.8, stakedBalance: 0, earnedRewards: 0, lockPeriodDays: 7 },
   { id: "s-2", tokenName: "Meme Pad Chad", tokenSymbol: "CHAD", tokenAddress: "0x89ab...bcde", apr: 82.0, tvlEth: 4.15, stakedBalance: 0, earnedRewards: 0, lockPeriodDays: 0 },
   { id: "s-3", tokenName: "Base AI Core", tokenSymbol: "BAIC", tokenAddress: "0x3456...ef01", apr: 48.0, tvlEth: 6.42, stakedBalance: 0, earnedRewards: 0, lockPeriodDays: 14 }
 ];
 
 const SEED_ACTIVITIES: Activity[] = [
-  { id: "a-1", type: "create", tokenSymbol: "AGL", tokenAddress: "0xa1a2a3a4b5b6c7c8d9d0e1e2f3f4a5a6b7b8c9c0", user: "0x479596943e70316A0d893De1876EBeA1Ea8E4D5B", amount: 1000000000, ethValue: 0, timestamp: Date.now() - 30 * 24 * 60 * 60 * 1000, details: "Platform genesis launch of Agunnaya Labs Utility Token" },
+  { id: "a-1", type: "create", tokenSymbol: "AGL", tokenAddress: "0xea1221b4d80a89bd8c75248fae7c176bd1854698", user: "0x479596943e70316A0d893De1876EBeA1Ea8E4D5B", amount: 1000000000, ethValue: 0, timestamp: Date.now() - 30 * 24 * 60 * 60 * 1000, details: "Platform genesis launch of Agunnaya Labs Utility Token" },
   { id: "a-2", type: "buy", tokenSymbol: "CHAD", tokenAddress: "0x89ab...bcde", user: "0x9821...5523", amount: 12000, ethValue: 0.015, timestamp: Date.now() - 1 * 24 * 60 * 60 * 1000, details: "Bought 12,000 CHAD tokens on the bonding curve" },
   { id: "a-3", type: "mint", tokenSymbol: "AGK", tokenAddress: "0x7890...cdef", user: "0x9821...5523", amount: 1, ethValue: 0.05, timestamp: Date.now() - 20 * 24 * 60 * 60 * 1000, details: "Minted Agunnaya Genesis Key #1 access NFT" },
   { id: "a-4", type: "vote", tokenSymbol: "BBG", tokenAddress: "0xdad1...eade", user: "0x4795...4D5B", amount: 50000, ethValue: 0, timestamp: Date.now() - 12 * 24 * 60 * 60 * 1000, details: "Voted FOR Proposal #2 'AA integration' with 50,000 voting weight" }
@@ -284,11 +284,12 @@ const SEED_ACTIVITIES: Activity[] = [
 const DEFAULT_WALLET: WalletState = {
   isConnected: false,
   address: "",
-  balanceEth: 10.0, // starts with 10 mock ETH for testing the platform!
+  balanceEth: 0.0, // starts at 0.0 until on-chain connect
   walletType: null,
   isSmartAccount: false,
-  sponsoredGasEth: 0.05, // 0.05 sponsored gas for AA smart accounts
-  aglTokenBalance: 250 // starts with 250 mock AGL token balance!
+  sponsoredGasEth: 0.0,
+  aglTokenBalance: 0, // starts at 0 until on-chain connect
+  aglCredits: 0
 };
 
 // PERSISTENCE WRAPPER
@@ -457,6 +458,27 @@ export class AgunnayaDatabase {
         localStorage.setItem("agl_referral_records", JSON.stringify(merged));
       }
 
+      // 9. Sync Price Alerts
+      if (auth.currentUser) {
+        const alertsSnap = await getDocs(collection(db, "price_alerts"));
+        if (!alertsSnap.empty) {
+          const firestoreAlerts: PriceAlert[] = [];
+          alertsSnap.forEach(doc => firestoreAlerts.push(doc.data() as PriceAlert));
+          const localAlerts = this.getPriceAlerts();
+          const mergedAlerts = [...localAlerts];
+          firestoreAlerts.forEach(fa => {
+            const idx = mergedAlerts.findIndex(a => a.id.toLowerCase() === fa.id.toLowerCase());
+            if (idx !== -1) {
+              mergedAlerts[idx] = fa;
+            } else {
+              mergedAlerts.push(fa);
+            }
+          });
+          const userAlerts = mergedAlerts.filter(a => a.userId === auth.currentUser?.uid);
+          localStorage.setItem("agl_price_alerts", JSON.stringify(userAlerts));
+        }
+      }
+
       return true;
     } catch (err) {
       console.error("Firestore initial sync failed:", err);
@@ -464,13 +486,23 @@ export class AgunnayaDatabase {
     }
   }
 
-  static getTokens(): Token[] {
-    const data = localStorage.getItem("agl_tokens");
+  static safeParse<T>(key: string, fallback: T): T {
+    const data = localStorage.getItem(key);
     if (!data) {
-      localStorage.setItem("agl_tokens", JSON.stringify(SEED_TOKENS));
-      return SEED_TOKENS;
+      localStorage.setItem(key, JSON.stringify(fallback));
+      return fallback;
     }
-    return JSON.parse(data);
+    try {
+      return JSON.parse(data) as T;
+    } catch (err) {
+      console.warn(`Local storage key "${key}" was corrupted. Resetting to fallback seed.`, err);
+      localStorage.setItem(key, JSON.stringify(fallback));
+      return fallback;
+    }
+  }
+
+  static getTokens(): Token[] {
+    return this.safeParse<Token[]>("agl_tokens", SEED_TOKENS);
   }
 
   static saveTokens(tokens: Token[]) {
@@ -481,12 +513,7 @@ export class AgunnayaDatabase {
   }
 
   static getNFTs(): NFTCollection[] {
-    const data = localStorage.getItem("agl_nfts");
-    if (!data) {
-      localStorage.setItem("agl_nfts", JSON.stringify(SEED_NFTS));
-      return SEED_NFTS;
-    }
-    return JSON.parse(data);
+    return this.safeParse<NFTCollection[]>("agl_nfts", SEED_NFTS);
   }
 
   static saveNFTs(nfts: NFTCollection[]) {
@@ -497,12 +524,7 @@ export class AgunnayaDatabase {
   }
 
   static getDAOs(): DAO[] {
-    const data = localStorage.getItem("agl_daos");
-    if (!data) {
-      localStorage.setItem("agl_daos", JSON.stringify(SEED_DAOS));
-      return SEED_DAOS;
-    }
-    return JSON.parse(data);
+    return this.safeParse<DAO[]>("agl_daos", SEED_DAOS);
   }
 
   static saveDAOs(daos: DAO[]) {
@@ -513,12 +535,7 @@ export class AgunnayaDatabase {
   }
 
   static getGameFi(): GameFiProject[] {
-    const data = localStorage.getItem("agl_gamefi");
-    if (!data) {
-      localStorage.setItem("agl_gamefi", JSON.stringify(SEED_GAMEFI));
-      return SEED_GAMEFI;
-    }
-    return JSON.parse(data);
+    return this.safeParse<GameFiProject[]>("agl_gamefi", SEED_GAMEFI);
   }
 
   static saveGameFi(gamefi: GameFiProject[]) {
@@ -529,12 +546,7 @@ export class AgunnayaDatabase {
   }
 
   static getAgents(): AIAgent[] {
-    const data = localStorage.getItem("agl_agents");
-    if (!data) {
-      localStorage.setItem("agl_agents", JSON.stringify(SEED_AGENTS));
-      return SEED_AGENTS;
-    }
-    return JSON.parse(data);
+    return this.safeParse<AIAgent[]>("agl_agents", SEED_AGENTS);
   }
 
   static saveAgents(agents: AIAgent[]) {
@@ -545,12 +557,7 @@ export class AgunnayaDatabase {
   }
 
   static getStaking(): StakingPool[] {
-    const data = localStorage.getItem("agl_staking");
-    if (!data) {
-      localStorage.setItem("agl_staking", JSON.stringify(SEED_STAKING));
-      return SEED_STAKING;
-    }
-    return JSON.parse(data);
+    return this.safeParse<StakingPool[]>("agl_staking", SEED_STAKING);
   }
 
   static saveStaking(pools: StakingPool[]) {
@@ -561,25 +568,27 @@ export class AgunnayaDatabase {
   }
 
   static getWallet(): WalletState {
-    const data = localStorage.getItem("agl_wallet");
-    if (!data) {
-      localStorage.setItem("agl_wallet", JSON.stringify(DEFAULT_WALLET));
-      return DEFAULT_WALLET;
-    }
-    return JSON.parse(data);
+    return this.safeParse<WalletState>("agl_wallet", DEFAULT_WALLET);
   }
 
   static saveWallet(wallet: WalletState) {
     localStorage.setItem("agl_wallet", JSON.stringify(wallet));
   }
 
+  static getTokenBalances(address: string): { [tokenAddress: string]: number } {
+    if (!address) return {};
+    const key = `agl_balances_${address.toLowerCase()}`;
+    return this.safeParse<{ [tokenAddress: string]: number }>(key, {});
+  }
+
+  static saveTokenBalances(address: string, balances: { [tokenAddress: string]: number }) {
+    if (!address) return;
+    localStorage.setItem(`agl_balances_${address.toLowerCase()}`, JSON.stringify(balances));
+  }
+
   static getActivities(): Activity[] {
-    const data = localStorage.getItem("agl_activities");
-    if (!data) {
-      localStorage.setItem("agl_activities", JSON.stringify(SEED_ACTIVITIES));
-      return SEED_ACTIVITIES;
-    }
-    return JSON.parse(data).sort((a: Activity, b: Activity) => b.timestamp - a.timestamp);
+    const items = this.safeParse<Activity[]>("agl_activities", SEED_ACTIVITIES);
+    return [...items].sort((a: Activity, b: Activity) => b.timestamp - a.timestamp);
   }
 
   static saveActivities(activities: Activity[]) {
@@ -610,11 +619,7 @@ export class AgunnayaDatabase {
   }
 
   static getReferralRecords(): ReferralRecord[] {
-    const data = localStorage.getItem("agl_referral_records");
-    if (!data) {
-      return [];
-    }
-    return JSON.parse(data);
+    return this.safeParse<ReferralRecord[]>("agl_referral_records", []);
   }
 
   static saveReferralRecords(records: ReferralRecord[]) {
@@ -709,9 +714,7 @@ export class AgunnayaDatabase {
   }
 
   static getPayouts(): ReferralPayout[] {
-    const data = localStorage.getItem("agl_referral_payouts");
-    if (!data) return [];
-    return JSON.parse(data);
+    return this.safeParse<ReferralPayout[]>("agl_referral_payouts", []);
   }
 
   static savePayouts(payouts: ReferralPayout[]) {
@@ -790,6 +793,55 @@ export class AgunnayaDatabase {
     return { success: true, claimedAmount: amount };
   }
 
+  static getPriceAlerts(): PriceAlert[] {
+    const data = localStorage.getItem("agl_price_alerts");
+    if (!data) return [];
+    try {
+      return JSON.parse(data);
+    } catch {
+      return [];
+    }
+  }
+
+  static savePriceAlerts(alerts: PriceAlert[]) {
+    localStorage.setItem("agl_price_alerts", JSON.stringify(alerts));
+    alerts.forEach(a => {
+      this.saveToFirestore("price_alerts", a.id, a);
+    });
+  }
+
+  static addPriceAlert(alert: Omit<PriceAlert, "id" | "createdAt" | "status" | "triggeredAt">): PriceAlert {
+    const alerts = this.getPriceAlerts();
+    const newAlert: PriceAlert = {
+      ...alert,
+      id: "alert_" + Math.random().toString(36).substring(2, 11),
+      status: "active",
+      createdAt: Date.now(),
+      triggeredAt: null
+    };
+    alerts.unshift(newAlert);
+    this.savePriceAlerts(alerts);
+    return newAlert;
+  }
+
+  static async deletePriceAlert(id: string) {
+    const alerts = this.getPriceAlerts();
+    const updated = alerts.filter(a => a.id !== id);
+    localStorage.setItem("agl_price_alerts", JSON.stringify(updated));
+    if (auth.currentUser) {
+      try {
+        await deleteDoc(doc(db, "price_alerts", id));
+      } catch (err) {
+        console.warn("Firestore delete price_alerts failed:", err);
+        try {
+          handleFirestoreError(err, OperationType.DELETE, `price_alerts/${id}`);
+        } catch (e) {
+          console.error("Firestore delete rules validation failed: ", e);
+        }
+      }
+    }
+  }
+
   static resetDatabase() {
     localStorage.removeItem("agl_tokens");
     localStorage.removeItem("agl_nfts");
@@ -802,5 +854,6 @@ export class AgunnayaDatabase {
     localStorage.removeItem("agl_referral_records");
     localStorage.removeItem("agl_referral_payouts");
     localStorage.removeItem("agl_visitor_referrer");
+    localStorage.removeItem("agl_price_alerts");
   }
 }

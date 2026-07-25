@@ -1,4 +1,6 @@
 import { WalletState, Token, NFTCollection, DAO, GameFiProject, AIAgent, Activity } from "../types";
+import { AgunnayaDatabase } from "../lib/db";
+import ImageWithFallback from "../components/ImageWithFallback";
 import { 
   Briefcase, 
   Layers, 
@@ -59,6 +61,8 @@ export default function DashboardPage({
       </div>
     );
   }
+
+  const tokenBalances = wallet.address ? AgunnayaDatabase.getTokenBalances(wallet.address) : {};
 
   // Calculate some mock totals
   const myCreatedProjectsCount = 
@@ -123,9 +127,13 @@ export default function DashboardPage({
           </div>
           <div className="mt-4 pt-4 border-t border-white/5 flex justify-between items-center text-xs">
             <span className="text-zinc-500">Status:</span>
-            <span className="font-bold text-emerald-400 flex items-center gap-1 font-mono">
-              <FlameKindling className="w-3.5 h-3.5" /> Sponsored Active
-            </span>
+            <button
+              id="dashboard-manage-gas-btn"
+              onClick={() => onSelectTab("gas-dashboard")}
+              className="font-bold text-emerald-400 flex items-center gap-1 font-mono hover:text-brand-purple transition-colors bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 hover:border-brand-purple/30 hover:bg-brand-purple/10"
+            >
+              <FlameKindling className="w-3.5 h-3.5 animate-pulse" /> Manage & Faucet
+            </button>
           </div>
         </div>
 
@@ -183,7 +191,7 @@ export default function DashboardPage({
                 {userTokens.filter(t => t.creator === wallet.address).map((t) => (
                   <div key={t.address} className="flex justify-between items-center p-3 bg-zinc-950 rounded-xl border border-white/5">
                     <div className="flex items-center gap-3">
-                      <img src={t.logoUrl} alt={t.name} className="w-8 h-8 rounded-lg object-cover" />
+                      <ImageWithFallback src={t.logoUrl} alt={t.name} fallbackText={t.symbol} className="w-8 h-8 rounded-lg object-cover" />
                       <div>
                         <span className="block text-xs font-semibold text-white">{t.name} ({t.symbol})</span>
                         <span className="block text-[9px] font-mono text-zinc-500">Token Contract · {t.address.slice(0, 8)}...</span>
@@ -215,7 +223,7 @@ export default function DashboardPage({
                 {userAgents.filter(a => a.creator === wallet.address).map((a) => (
                   <div key={a.id} className="flex justify-between items-center p-3 bg-zinc-950 rounded-xl border border-white/5">
                     <div className="flex items-center gap-3">
-                      <img src={a.avatarUrl} alt={a.name} className="w-8 h-8 rounded-lg object-cover" />
+                      <ImageWithFallback src={a.avatarUrl} alt={a.name} fallbackText={a.symbol} className="w-8 h-8 rounded-lg object-cover" />
                       <div>
                         <span className="block text-xs font-semibold text-white">{a.name} ({a.symbol})</span>
                         <span className="block text-[9px] font-mono text-zinc-500">Autonomous Agent · SENT_CORE</span>
@@ -238,19 +246,25 @@ export default function DashboardPage({
               <h3 className="text-xs font-bold font-display uppercase tracking-wider text-zinc-400 mb-3 flex items-center gap-1.5">
                 <Coins className="w-4 h-4 text-brand-purple" /> Token Assets
               </h3>
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
                 <div className="flex justify-between items-center p-2.5 bg-black/30 rounded-xl border border-white/5 text-xs">
-                  <span className="font-bold text-white font-mono">AGL Token</span>
-                  <span className="font-mono text-zinc-300">{wallet.aglTokenBalance.toLocaleString()} AGL</span>
+                  <span className="font-bold text-white font-mono font-display">AGL Token</span>
+                  <span className="font-mono text-zinc-300">{wallet.aglTokenBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })} AGL</span>
                 </div>
-                <div className="flex justify-between items-center p-2.5 bg-black/30 rounded-xl border border-white/5 text-xs">
-                  <span className="font-bold text-white font-mono">CHAD Meme</span>
-                  <span className="font-mono text-zinc-300">0 CHAD</span>
-                </div>
-                <div className="flex justify-between items-center p-2.5 bg-black/30 rounded-xl border border-white/5 text-xs">
-                  <span className="font-bold text-white font-mono">BAIC Core</span>
-                  <span className="font-mono text-zinc-300">0 BAIC</span>
-                </div>
+                {userTokens.filter(t => t.symbol !== "AGL").map(t => {
+                  const bal = tokenBalances[t.address.toLowerCase()] || 0;
+                  const isPreset = t.symbol === "CHAD" || t.symbol === "BAIC";
+                  if (!isPreset && bal <= 0) return null;
+                  return (
+                    <div key={t.address} className="flex justify-between items-center p-2.5 bg-black/30 rounded-xl border border-white/5 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        {t.logoUrl && <ImageWithFallback src={t.logoUrl} alt={t.symbol} fallbackText={t.symbol} className="w-4 h-4 rounded-full object-cover" />}
+                        <span className="font-bold text-white font-mono">{t.symbol}</span>
+                      </div>
+                      <span className="font-mono text-zinc-300">{bal.toLocaleString(undefined, { maximumFractionDigits: 2 })} {t.symbol}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -267,7 +281,7 @@ export default function DashboardPage({
                 <div className="space-y-2">
                   {userNFTs.map(n => n.items.map(item => (
                     <div key={item.id} className="flex items-center gap-2.5 p-2 bg-black/30 rounded-xl border border-white/5 text-xs">
-                      <img src={item.imageUrl} alt={item.name} className="w-7 h-7 rounded object-cover" />
+                      <ImageWithFallback src={item.imageUrl} alt={item.name} fallbackText={n.name} className="w-7 h-7 rounded object-cover" />
                       <div>
                         <span className="block font-bold text-white">{item.name}</span>
                         <span className="block text-[8px] text-zinc-500 font-mono">{n.name} · #{item.id}</span>

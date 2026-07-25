@@ -1,3 +1,4 @@
+import React, { useEffect } from "react";
 import { Wallet, Shield, Zap, Key } from "lucide-react";
 import { WalletState } from "../types";
 
@@ -8,10 +9,35 @@ interface WalletModalProps {
 }
 
 export default function WalletModal({ isOpen, onClose, onConnect }: WalletModalProps) {
+  // Lock document body scroll on mobile touch when open
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div id="wallet-modal-container" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+    <div 
+      id="wallet-modal-container" 
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overscroll-contain"
+    >
       <div 
         id="wallet-modal-panel"
         className="relative w-full max-w-md p-6 overflow-hidden rounded-2xl glass-panel border border-white/10 glow-border-purple animate-fade-in"
