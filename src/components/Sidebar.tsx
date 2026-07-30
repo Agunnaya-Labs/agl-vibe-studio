@@ -18,6 +18,7 @@ import {
   Mail,
   Flame,
   Gauge,
+  Database,
   X
 } from "lucide-react";
 
@@ -72,6 +73,7 @@ export default function Sidebar({
     { id: "gdrive", label: "Google Drive Cloud", icon: HardDrive, category: "Workspace" },
     { id: "gmail", label: "Gmail Automation", icon: Mail, category: "Workspace" },
     { id: "explore", label: "Bonding Curve Pad", icon: Rocket, category: "Assets & Creation" },
+    { id: "token-factory", label: "Token Factory (Base)", icon: Database, category: "Assets & Creation", highlight: true },
     { id: "nfts", label: "NFT Studio", icon: Disc, category: "Assets & Creation" },
     { id: "daos", label: "DAO Governance", icon: Users, category: "Assets & Creation" },
     { id: "gamefi", label: "GameFi Arena", icon: Gamepad2, category: "Assets & Creation" },

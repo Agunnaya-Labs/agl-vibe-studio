@@ -27,6 +27,7 @@ import AdminPanelPage from "./pages/AdminPanelPage";
 import ReferralPage from "./pages/ReferralPage";
 import GoogleDrivePage from "./pages/GoogleDrivePage";
 import GmailPage from "./pages/GmailPage";
+import TokenFactoryPage from "./pages/TokenFactoryPage";
 
 // Database & Utilities
 import { AgunnayaDatabase } from "./lib/db";
@@ -75,6 +76,37 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [toast]);
+
+  // Global click-outside listener to close AI Drawer when clicking outside floating activator, tooltip, or drawer
+  useEffect(() => {
+    if (!isAIDrawerOpen) return;
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+
+      const activator = document.getElementById("floating-ai-activator");
+      const tooltip = document.getElementById("floating-ai-tooltip");
+      const drawer = document.getElementById("ai-assistant-drawer");
+
+      const isInsideActivator = activator && activator.contains(target);
+      const isInsideTooltip = tooltip && tooltip.contains(target);
+      const isInsideDrawer = drawer && drawer.contains(target);
+
+      if (!isInsideActivator && !isInsideTooltip && !isInsideDrawer) {
+        setIsAIDrawerOpen(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      document.addEventListener("click", handleOutsideClick);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("click", handleOutsideClick);
+    };
+  }, [isAIDrawerOpen]);
 
   // Terminal Logs state
   const [terminalLogs, setTerminalLogs] = useState<TerminalLine[]>([
@@ -590,6 +622,13 @@ export default function App() {
           image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80",
           url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=gas-dashboard"
         };
+      case "token-factory":
+        return {
+          title: "Token Factory Hub (Base Mainnet) | Agunnaya Labs Studio",
+          description: "Deploy custom ERC20 tokens directly on Base Mainnet via smart contract Factory. View created tokens and inspect creators.",
+          image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=token-factory"
+        };
       default:
         return {
           title: "Agunnaya Labs Studio - High Performance Web3 Developer Studio",
@@ -653,6 +692,15 @@ export default function App() {
             onRefreshWallet={refreshAllData}
             addTerminalLog={addTerminalLog}
             showToast={showToast}
+          />
+        );
+      case "token-factory":
+        return (
+          <TokenFactoryPage
+            wallet={wallet}
+            showToast={showToast}
+            onOpenConnectWallet={() => setIsWalletModalOpen(true)}
+            addTerminalLog={addTerminalLog}
           />
         );
       case "nfts":

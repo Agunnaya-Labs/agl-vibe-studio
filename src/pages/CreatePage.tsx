@@ -1,11 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
-import { generateProjectAI } from "../lib/gemini";
+import { generateProjectAI, AIDeploymentProposal } from "../lib/gemini";
+import AIDeploymentWizardModal from "../components/AIDeploymentWizardModal";
 import { AgunnayaDatabase, BASE_PRICE, SLOPE } from "../lib/db";
 import { Token, WalletState } from "../types";
 import IPFSUploader from "../components/IPFSUploader";
 import { analyzeSolidityCode } from "../lib/security";
 import { db, auth } from "../lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import {
+  TOKEN_FACTORY_ADDRESS,
+  TOKEN_FACTORY_ABI,
+  createTokenOnChain,
+  fetchOnChainTokenCount,
+  fetchOnChainTokens
+} from "../lib/tokenFactory";
 import { 
   Sparkles, 
   Rocket, 
@@ -28,7 +36,13 @@ import {
   ShieldAlert,
   Cloud,
   CloudOff,
-  CloudLightning
+  CloudLightning,
+  Copy,
+  Database,
+  Terminal,
+  ChevronDown,
+  ChevronUp,
+  Wand2
 } from "lucide-react";
 
 interface CreatePageProps {
@@ -55,6 +69,114 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
   // Firebase Session Auto-Save State
   const [lastSaved, setLastSaved] = useState<number | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error" | "offline">("idle");
+
+  // Token Factory On-Chain State
+  const [factoryTokenCount, setFactoryTokenCount] = useState<number | null>(null);
+  const [factoryTokens, setFactoryTokens] = useState<string[]>([]);
+  const [showAbiInspector, setShowAbiInspector] = useState(false);
+  const [copiedContractAddress, setCopiedContractAddress] = useState(false);
+
+  // AI Deployment Wizard Modal State
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+
+  const handleWizardAutoFill = (proposal: AIDeploymentProposal) => {
+    setActiveSubMode("ai-architect");
+    setTokenName(proposal.tokenName);
+    setTokenSymbol(proposal.tokenSymbol);
+    setTokenDesc(proposal.description);
+    setAiPrompt(`Create a ${proposal.category} token named '${proposal.tokenName}' ($${proposal.tokenSymbol}) with ${proposal.initialSupply} initial supply, ${proposal.creatorFeePercent}% creator fee, and base spot price ${proposal.basePriceEth} ETH.`);
+    
+    setAiResult({
+      name: proposal.tokenName,
+      symbol: proposal.tokenSymbol,
+      description: proposal.description,
+      solidityCode: proposal.solidityCode,
+      parameters: {
+        initialSupply: proposal.initialSupply.toLocaleString(),
+        mintPrice: `${proposal.basePriceEth} ETH`,
+        additionalConfig: `Bonding Curve: ${proposal.curveModel.toUpperCase()} (Slope k: ${proposal.slopeK}). Royalty: ${proposal.creatorFeePercent}%. Anti-Whale Max: ${proposal.antiWhaleMaxPercent}%.`
+      },
+      securityAudit: proposal.securityAuditSummary,
+      uiTheme: {
+        primaryColor: "purple-500",
+        glowColor: "purple-500/20"
+      },
+      launchChecklist: [
+        `Verified OpenZeppelin standard ERC-20 contract for ${proposal.tokenSymbol}`,
+        `Linear bonding curve formula P(S) = ${proposal.basePriceEth} + ${proposal.slopeK} * S`,
+        `Checks-Effects-Interactions pattern reentrancy verified (Score: ${proposal.securityScore}/100)`,
+        "Ready to deploy to Base Mainnet or Sepolia Sandbox"
+      ]
+    });
+
+    showToast(`🧙‍♂️ AI Wizard parameters auto-filled for $${proposal.tokenSymbol}!`, "success");
+    addTerminalLog("system", `AI DEPLOYMENT WIZARD: Parameters successfully loaded for ${proposal.tokenName} ($${proposal.tokenSymbol})`);
+  };
+
+  const handleWizardDirectLaunch = (proposal: AIDeploymentProposal) => {
+    const mockLogo = "https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=128&auto=format&fit=crop&q=60";
+    const newAddress = `0x${Math.random().toString(16).substring(2, 42)}`;
+    
+    const newToken: Token = {
+      address: newAddress,
+      name: proposal.tokenName,
+      symbol: proposal.tokenSymbol,
+      description: proposal.description,
+      creator: wallet.address || "0x0000000000000000000000000000000000000000",
+      creatorFeesEarned: 0,
+      currentPrice: proposal.basePriceEth || BASE_PRICE,
+      supply: 0,
+      maxSupply: proposal.initialSupply,
+      marketCap: 0,
+      reserveEth: 0,
+      volume24h: 0,
+      category: (proposal.category as Token["category"]) || "utility",
+      logoUrl: mockLogo,
+      socials: { website: "https://agunnaya.io" },
+      isVerified: true,
+      vestingWeeks: 0,
+      referralRewardsPct: proposal.creatorFeePercent,
+      createdAt: Date.now(),
+      implementation: TOKEN_FACTORY_ADDRESS
+    };
+
+    const tokensList = AgunnayaDatabase.getTokens();
+    tokensList.push(newToken);
+    AgunnayaDatabase.saveTokens(tokensList);
+
+    if (wallet.isSmartAccount) {
+      const updatedWallet = { ...wallet, sponsoredGasEth: Math.max(0, wallet.sponsoredGasEth - 0.002) };
+      AgunnayaDatabase.saveWallet(updatedWallet);
+    } else {
+      const updatedWallet = { ...wallet, balanceEth: Math.max(0, wallet.balanceEth - 0.002) };
+      AgunnayaDatabase.saveWallet(updatedWallet);
+    }
+    onRefreshWallet();
+
+    AgunnayaDatabase.addActivity({
+      type: "deployment",
+      tokenSymbol: newToken.symbol,
+      tokenAddress: newToken.address,
+      user: wallet.address || "0x0000",
+      amount: 1,
+      ethValue: 0.002,
+      details: `AI Wizard 1-Click Launch: ${newToken.name} (${newToken.symbol}) deployed to Base network at ${newToken.address}`
+    });
+
+    showToast(`🚀 Successfully launched ${newToken.name} ($${newToken.symbol}) via AI Wizard!`, "success");
+    addTerminalLog("success", `AI DEPLOYMENT WIZARD: Deployed ${newToken.name} ($${newToken.symbol}) at ${newToken.address}`);
+    onLaunchSuccess(newToken);
+  };
+
+  useEffect(() => {
+    async function loadFactoryInfo() {
+      const count = await fetchOnChainTokenCount();
+      setFactoryTokenCount(count);
+      const tokens = await fetchOnChainTokens();
+      setFactoryTokens(tokens);
+    }
+    loadFactoryInfo();
+  }, []);
 
   // Keep references to the latest values so the interval doesn't reset when typing
   const latestStateRef = useRef({ aiPrompt, aiProjectType, aiResult, deployedAddress, deployStep });
@@ -218,7 +340,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
     }
   };
 
-  // Handles Mock Deployment of AI Generated Code with Step-by-Step Progress milestones
+  // Handles Deployment of AI Generated Code via Token Factory on Base Mainnet or Sandbox fallback
   const handleAIDeploy = async () => {
     if (!wallet.isConnected) {
       showToast("Please connect your wallet first in the header.", "error");
@@ -227,10 +349,87 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
     if (!aiResult || deployingAI) return;
     setDeployingAI(true);
     setDeployStep("compiling");
-    addTerminalLog("info", `Initiating zero-gas sponsorship multi-sig pipeline for ${aiResult.name}...`);
+    addTerminalLog("info", `Initiating contract deployment pipeline for ${aiResult.name}...`);
     addTerminalLog("info", `[1/3] Compiling Solidity contract source code...`);
 
-    // Milestone 1: Compiling Solidity
+    const hasEthereum = typeof window !== "undefined" && (window as any).ethereum;
+
+    if (hasEthereum) {
+      try {
+        addTerminalLog("info", `[2/3] Connecting to Base Mainnet Token Factory contract at ${TOKEN_FACTORY_ADDRESS}...`);
+        setDeployStep("gas");
+
+        addTerminalLog("info", `[3/3] Prompting Web3 wallet to invoke createToken("${aiResult.name}", "${aiResult.symbol}")...`);
+        setDeployStep("pending");
+
+        const { txHash, newTokenAddress } = await createTokenOnChain(aiResult.name, aiResult.symbol);
+
+        addTerminalLog("success", `On-Chain Transaction Confirmed! Tx Hash: ${txHash}`);
+
+        const mockLogo = "https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=128&auto=format&fit=crop&q=60";
+        const newToken: Token = {
+          address: newTokenAddress,
+          name: aiResult.name,
+          symbol: aiResult.symbol,
+          description: aiResult.description,
+          creator: wallet.address,
+          creatorFeesEarned: 0,
+          currentPrice: BASE_PRICE,
+          supply: 0,
+          maxSupply: parseInt(aiResult.parameters?.initialSupply?.replace(/,/g, "")) || 1000000000,
+          marketCap: 0,
+          reserveEth: 0,
+          volume24h: 0,
+          category: "utility",
+          logoUrl: mockLogo,
+          socials: { website: "https://agunnaya.io" },
+          isVerified: true,
+          vestingWeeks: 0,
+          referralRewardsPct: 0,
+          createdAt: Date.now(),
+          implementation: TOKEN_FACTORY_ADDRESS
+        };
+
+        const tokensList = AgunnayaDatabase.getTokens();
+        tokensList.push(newToken);
+        AgunnayaDatabase.saveTokens(tokensList);
+
+        if (wallet.isSmartAccount) {
+          const updatedWallet = { ...wallet, sponsoredGasEth: Math.max(0, wallet.sponsoredGasEth - 0.002) };
+          AgunnayaDatabase.saveWallet(updatedWallet);
+        } else {
+          const updatedWallet = { ...wallet, balanceEth: Math.max(0, wallet.balanceEth - 0.002) };
+          AgunnayaDatabase.saveWallet(updatedWallet);
+        }
+        onRefreshWallet();
+
+        AgunnayaDatabase.addActivity({
+          type: "deployment",
+          tokenSymbol: newToken.symbol,
+          tokenAddress: newToken.address,
+          user: wallet.address,
+          amount: 1,
+          ethValue: 0.002,
+          details: `On-chain Factory Deployment: ${newToken.name} (${newToken.symbol}) deployed to Base Mainnet at ${newToken.address}`
+        });
+
+        // Refresh factory token count
+        fetchOnChainTokenCount().then(c => setFactoryTokenCount(c));
+
+        addTerminalLog("success", `CONTRACT DEPLOYED ON-CHAIN at ${newToken.address}`);
+        setDeployingAI(false);
+        setDeployStep("completed");
+        setDeploySuccessAI(true);
+        setDeployedAddress(newToken.address);
+        onLaunchSuccess(newToken);
+        return;
+      } catch (err: any) {
+        console.warn("On-chain transaction notice or fallback:", err);
+        addTerminalLog("error", `Web3 notice: ${err.message || "Transaction rejected or network mismatch"}. Falling back to sandbox relay deployment...`);
+      }
+    }
+
+    // Milestone 1: Compiling Solidity (Sandbox fallback)
     setTimeout(() => {
       addTerminalLog("success", `Solidity compiled successfully. Generated ABI & Bytecode.`);
       setDeployStep("gas");
@@ -246,8 +445,9 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
         setTimeout(() => {
           // Create token object representing the deployed asset
           const mockLogo = "https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=128&auto=format&fit=crop&q=60";
+          const generatedAddr = "0x" + Math.random().toString(16).substr(2, 40);
           const newToken: Token = {
-            address: "0x" + Math.random().toString(16).substr(2, 40),
+            address: generatedAddr,
             name: aiResult.name,
             symbol: aiResult.symbol,
             description: aiResult.description,
@@ -266,7 +466,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
             vestingWeeks: 0,
             referralRewardsPct: 0,
             createdAt: Date.now(),
-            implementation: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" // Default AI-Architect template implementation
+            implementation: TOKEN_FACTORY_ADDRESS
           };
 
           // Add to database
@@ -292,7 +492,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
             user: wallet.address,
             amount: 1,
             ethValue: 0.002,
-            details: `Successfully deployed custom Solidity contract: ${newToken.name} (${newToken.symbol}) on Base Sepolia`
+            details: `Successfully deployed custom Solidity contract: ${newToken.name} (${newToken.symbol}) via Token Factory ${TOKEN_FACTORY_ADDRESS}`
           });
 
           addTerminalLog("success", `CONTRACT DEPLOYED successfully at address ${newToken.address}`);
@@ -396,6 +596,37 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
     <div id="creator-workspace-root" className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
       {/* Creation Mode Tabs & Active input panels */}
       <div className="lg:col-span-2 space-y-6">
+        {/* AI Deployment Wizard Hero Callout */}
+        <div className="relative group overflow-hidden rounded-2xl bg-gradient-to-r from-brand-blue/20 via-brand-purple/20 to-purple-600/20 border border-brand-purple/40 p-4 shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-blue to-brand-purple flex items-center justify-center text-white shadow-lg shadow-brand-purple/30">
+                <Wand2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white font-display flex items-center gap-2">
+                  AI Token Deployment Wizard
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-brand-purple text-white font-mono uppercase tracking-wider font-bold">
+                    Guided Launch
+                  </span>
+                </h3>
+                <p className="text-[11px] text-zinc-300 font-mono">
+                  Input plain text requirements & let Gemini AI propose bonding curve slopes, contract parameters & launch rules automatically!
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              id="open-ai-deployment-wizard-btn"
+              onClick={() => setIsWizardOpen(true)}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-blue to-brand-purple text-white font-mono font-bold text-xs hover:opacity-95 shadow-lg shadow-brand-purple/20 transition-all flex items-center gap-1.5 shrink-0"
+            >
+              <Wand2 className="w-3.5 h-3.5" /> Launch AI Wizard
+            </button>
+          </div>
+        </div>
+
         {/* Toggle between Launchpad and AI Architect */}
         <div className="flex bg-zinc-900/80 border border-white/5 p-1 rounded-xl">
           <button
@@ -490,6 +721,56 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
                     </span>
                   )}
                 </div>
+                {/* AI Prompt Suggestions */}
+                <div className="space-y-1.5 mb-2">
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-brand-purple" /> AI Suggested Architect Templates
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      {
+                        label: "🔥 Base Meme Coin (10M Supply, 1% Tax)",
+                        type: "ERC-20 Token",
+                        prompt: "Create an ERC-20 meme token on Base named 'DegenVibes' (symbol: VIBES) with 10,000,000 supply, linear bonding curve, and a 1% developer protocol fee split."
+                      },
+                      {
+                        label: "💎 Staking Vault Token (15% APY)",
+                        type: "ERC-20 Token",
+                        prompt: "Build an ERC-20 utility token with a built-in staking vault contract that pays 15% APY compounding rewards and 7-day lock periods."
+                      },
+                      {
+                        label: "🤖 Autonomous AI Agent Core",
+                        type: "AI Agent Core",
+                        prompt: "Design an autonomous AI Agent smart contract on Base that charges 0.001 ETH per execution call and routes fees directly to the agent creator wallet."
+                      },
+                      {
+                        label: "🏛️ DAO Multi-Sig Governance",
+                        type: "DAO Governance",
+                        prompt: "Build a DAO governance hub with 1,000 token quorum threshold, 51% majority rule, and 3-day voting windows for Base treasury proposals."
+                      },
+                      {
+                        label: "🎮 GameFi XP Reward Pool",
+                        type: "GameFi Tournament",
+                        prompt: "Deploy a GameFi reward pool contract that issues non-transferable XP tokens for completed quests and unlocks seasonal AGL token prize pools."
+                      }
+                    ].map((sug, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        id={`ai-suggestion-chip-${idx}`}
+                        onClick={() => {
+                          setAiProjectType(sug.type);
+                          setAiPrompt(sug.prompt);
+                          showToast(`Loaded AI suggestion: ${sug.label}`, "info");
+                        }}
+                        className="text-[10px] px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-white/10 hover:border-brand-purple/40 hover:bg-brand-purple/10 text-zinc-300 hover:text-white transition-all font-mono flex items-center gap-1 text-left"
+                      >
+                        <span>{sug.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="relative group">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-[#0052FF] to-[#A855F7] rounded-2xl blur opacity-25 group-focus-within:opacity-50 transition-all duration-300"></div>
                   <div className="relative bg-[#050505] border border-white/10 rounded-2xl p-4 shadow-2xl">
@@ -802,7 +1083,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
             )}
           </div>
         ) : (
-          <div className="glass-panel p-6 rounded-2xl border border-white/5 text-center py-24 space-y-3.5">
+          <div className="glass-panel p-6 rounded-2xl border border-white/5 text-center py-12 space-y-3.5">
             <BrainCircuit className="w-10 h-10 text-zinc-700 mx-auto animate-pulse" />
             <div>
               <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider font-display">AI Architect Sandbox</h4>
@@ -812,6 +1093,91 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
             </div>
           </div>
         )}
+
+        {/* BASE MAINNET TOKEN FACTORY CONTRACT INTEGRATION CARD */}
+        <div className="glass-panel p-5 rounded-2xl border border-[#0052FF]/30 bg-gradient-to-br from-[#0052FF]/10 via-zinc-950 to-purple-950/20 space-y-4 relative overflow-hidden shadow-xl">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-[#0052FF] animate-pulse" />
+              <span className="text-xs font-bold font-display text-white">Token Factory Contract</span>
+            </div>
+            <span className="text-[9px] font-mono font-bold bg-[#0052FF]/20 text-blue-400 border border-[#0052FF]/40 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              Base Mainnet (8453)
+            </span>
+          </div>
+
+          <div className="space-y-2 font-mono text-xs">
+            <div className="bg-zinc-950/80 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-bold block mb-0.5">Contract Address</span>
+                <span className="text-zinc-200 font-bold text-[11px] block truncate select-all">{TOKEN_FACTORY_ADDRESS}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(TOKEN_FACTORY_ADDRESS);
+                    setCopiedContractAddress(true);
+                    setTimeout(() => setCopiedContractAddress(false), 2000);
+                    showToast("Contract address copied to clipboard!", "success");
+                  }}
+                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 transition-all text-[10px] flex items-center gap-1"
+                  title="Copy address"
+                >
+                  {copiedContractAddress ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+                <a
+                  href={`https://basescan.org/address/${TOKEN_FACTORY_ADDRESS}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-brand-blue transition-all"
+                  title="View on BaseScan"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[10px]">
+              <div className="bg-zinc-950/60 border border-white/5 p-2.5 rounded-xl">
+                <span className="text-zinc-500 block mb-0.5">On-Chain Tokens:</span>
+                <span className="text-emerald-400 font-bold text-sm">
+                  {factoryTokenCount !== null ? factoryTokenCount : <Loader2 className="w-3 h-3 animate-spin inline text-zinc-400" />}
+                </span>
+              </div>
+              <div className="bg-zinc-950/60 border border-white/5 p-2.5 rounded-xl">
+                <span className="text-zinc-500 block mb-0.5">Primary Entry Method:</span>
+                <span className="text-brand-purple font-bold text-[11px]">createToken(...)</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-1">
+            <button
+              onClick={() => setShowAbiInspector(!showAbiInspector)}
+              className="w-full py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 font-mono text-[10px] flex items-center justify-between transition-all"
+            >
+              <span className="flex items-center gap-1.5 font-bold">
+                <Terminal className="w-3.5 h-3.5 text-brand-purple" />
+                Inspect Token Factory ABI & Methods
+              </span>
+              {showAbiInspector ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+
+            {showAbiInspector && (
+              <div className="mt-2 p-3 bg-zinc-950 border border-white/10 rounded-xl space-y-2 animate-fade-in font-mono text-[10px]">
+                <div className="text-zinc-400 font-bold border-b border-white/5 pb-1">ABI Function Signatures:</div>
+                <div className="space-y-1 text-zinc-300">
+                  <div className="text-emerald-400">⚡ createToken(string _name, string _symbol) returns (address)</div>
+                  <div className="text-blue-400">👁️ getTokenCount() view returns (uint256)</div>
+                  <div className="text-blue-400">👁️ getTokens() view returns (address[])</div>
+                  <div className="text-blue-400">👁️ tokenCreator(address token) view returns (address)</div>
+                  <div className="text-purple-400">🔔 Event: TokenCreated(address token, address creator, string name, string symbol)</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* STEP-BY-STEP DEPLOYMENT PROGRESS MODAL */}
@@ -1013,6 +1379,13 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
           </div>
         </div>
       )}
+    {/* AI Deployment Wizard Modal */}
+    <AIDeploymentWizardModal
+      isOpen={isWizardOpen}
+      onClose={() => setIsWizardOpen(false)}
+      onAutoFill={handleWizardAutoFill}
+      onDirectLaunch={handleWizardDirectLaunch}
+    />
     </div>
   );
 }

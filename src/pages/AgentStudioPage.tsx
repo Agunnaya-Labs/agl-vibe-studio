@@ -593,6 +593,59 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                         <span>{optimizingPrompt ? "Optimizing..." : "AI Auto-Optimize"}</span>
                       </button>
                     </div>
+
+                    {/* AI Agent Directive Suggestions */}
+                    <div className="space-y-1 mb-2">
+                      <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1 font-mono">
+                        <Sparkles className="w-3 h-3 text-brand-purple" /> Preset AI Agent Suggestions
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          {
+                            label: "🛡️ Solidity Security Auditor",
+                            name: "Agunnaya Security Sentinel",
+                            symbol: "AUDIT",
+                            desc: "Autonomous smart contract auditor scanning Solidity code for vulnerabilities.",
+                            fee: "0.001",
+                            prompt: "You are an expert Web3 security auditor. Scan submitted Solidity code for reentrancy, integer overflows, unhandled calls, and access control issues on Base."
+                          },
+                          {
+                            label: "📈 DeFi Yield Arbitrage Bot",
+                            name: "Agunnaya Yield Scout",
+                            symbol: "YIELD",
+                            desc: "Real-time liquidity and APY aggregator scanning Base pools.",
+                            fee: "0.0005",
+                            prompt: "You are a DeFi yield optimization agent on Base. Analyze pool APYs, gas overheads, and impermanent loss risk to recommend maximum returns."
+                          },
+                          {
+                            label: "🏛️ DAO Governance Strategist",
+                            name: "Agunnaya DAO Advisor",
+                            symbol: "GOV",
+                            desc: "Treasury and proposal strategy generator for decentralized organizations.",
+                            fee: "0.0008",
+                            prompt: "You are an autonomous DAO strategist. Help users structure governance proposals, calculate quorum thresholds, and audit treasury allocations."
+                          }
+                        ].map((sug, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            id={`agent-suggestion-chip-${idx}`}
+                            onClick={() => {
+                              setName(sug.name);
+                              setSymbol(sug.symbol);
+                              setDescription(sug.desc);
+                              setSubFee(sug.fee);
+                              setSystemPrompt(sug.prompt);
+                              showToast(`Loaded AI Agent preset: ${sug.label}`, "info");
+                            }}
+                            className="text-[10px] px-2 py-1 rounded-lg bg-zinc-950 border border-white/10 hover:border-brand-purple/40 hover:bg-brand-purple/10 text-zinc-400 hover:text-white transition-all font-mono"
+                          >
+                            {sug.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     <textarea
                       id="agent-directives-input"
                       value={systemPrompt}

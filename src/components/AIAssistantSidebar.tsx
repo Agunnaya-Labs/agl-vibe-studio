@@ -25,11 +25,34 @@ export default function AIAssistantSidebar({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const predefinedQuestions = [
-    "Explain the bonding curve math",
-    "What is AGL token utility?",
-    "How does AA Gas Sponsorship work?"
+  const predefinedCategories = [
+    {
+      label: "Tokens & Curve",
+      questions: [
+        "Explain the bonding curve price math $P(S) = P_0 + k \\cdot S$",
+        "How do 20% referral fee splits work on token buys?",
+        "What is the standard ERC-20 contract ABI structure?"
+      ]
+    },
+    {
+      label: "AI Agents",
+      questions: [
+        "How to build an autonomous AI Agent on Base?",
+        "Generate system prompt for a DeFi Yield Auditor",
+        "How do AI Agent prompt fees and subscriptions pay creators?"
+      ]
+    },
+    {
+      label: "DeFi & DAOs",
+      questions: [
+        "What is the APY for AGL Staking Vaults?",
+        "How does Account Abstraction (AA) gas sponsorship work?",
+        "How do DAO proposal voting thresholds work?"
+      ]
+    }
   ];
+
+  const [selectedCategoryIdx, setSelectedCategoryIdx] = useState(0);
 
   const handleSend = async (textToSend: string) => {
     if (!textToSend.trim() || isLoading) return;
@@ -190,22 +213,45 @@ export default function AIAssistantSidebar({
           )}
         </div>
 
-        {/* Suggested Questions */}
+        {/* Suggested Questions with Categories */}
         <div className="p-4 border-t border-white/5 bg-zinc-950/50 space-y-3">
-          <div className="space-y-1.5">
-            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1">
-              <Zap className="w-3 h-3 text-brand-purple" /> Recommended Queries
-            </span>
-            <div className="flex flex-col gap-1">
-              {predefinedQuestions.map((q, idx) => (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1">
+                <Zap className="w-3 h-3 text-brand-purple" /> AI Suggested Queries
+              </span>
+              <span className="text-[9px] text-zinc-600 font-mono">1-Click Prompt</span>
+            </div>
+
+            {/* Category Selector Tabs */}
+            <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
+              {predefinedCategories.map((cat, cIdx) => (
                 <button
-                  id={`pref-q-${idx}`}
+                  key={cIdx}
+                  type="button"
+                  onClick={() => setSelectedCategoryIdx(cIdx)}
+                  className={`text-[9px] font-mono px-2 py-0.5 rounded-md whitespace-nowrap transition-all ${
+                    selectedCategoryIdx === cIdx
+                      ? "bg-brand-purple text-white font-bold"
+                      : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Questions for Active Category */}
+            <div className="flex flex-col gap-1">
+              {predefinedCategories[selectedCategoryIdx].questions.map((q, idx) => (
+                <button
+                  id={`pref-q-${selectedCategoryIdx}-${idx}`}
                   key={idx}
                   onClick={() => handleSend(q)}
                   disabled={isLoading}
-                  className="w-full text-left text-[10px] text-zinc-400 hover:text-brand-purple bg-zinc-900 hover:bg-brand-purple/5 p-2 rounded-lg border border-white/5 hover:border-brand-purple/20 transition-all font-mono"
+                  className="w-full text-left text-[10px] text-zinc-300 hover:text-brand-purple bg-zinc-900 hover:bg-brand-purple/5 p-2 rounded-lg border border-white/5 hover:border-brand-purple/20 transition-all font-mono line-clamp-2"
                 >
-                  {q}
+                  ⚡ {q}
                 </button>
               ))}
             </div>

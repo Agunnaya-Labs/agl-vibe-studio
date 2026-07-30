@@ -101,6 +101,73 @@ Format the output strictly as JSON.`;
   }
 });
 
+// AI Deployment Wizard Proposal Endpoint
+app.post("/api/ai/propose-deployment", async (req, res) => {
+  try {
+    const { prompt, categoryPreference } = req.body;
+    if (!prompt) {
+      res.status(400).json({ error: "Prompt is required" });
+      return;
+    }
+
+    const client = getAIClient();
+
+    const systemInstruction = `You are a master Web3 Tokenomics Architect and Solidity Security Engineer for Agunnaya Labs Studio on Base Mainnet.
+Given natural language requirements for a token or bonding curve launch, propose a detailed, production-grade token deployment configuration JSON.
+
+Calculate optimal initial supply, base price P_0 (in ETH, e.g. 0.00001), curve slope factor k, creator fee percent (1.0 - 3.0%), anti-whale wallet limits (1.0 - 5.0%), and security audit score.
+Provide standard OpenZeppelin compliant Solidity contract code implementing ERC20 + Ownable + BondingCurve.`;
+
+    const response = await client.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: `Propose deployment parameters for token requirements: "${prompt}" (Category preference: ${categoryPreference || "Auto-Detect"})`,
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          required: [
+            "tokenName", "tokenSymbol", "category", "description",
+            "initialSupply", "basePriceEth", "slopeK", "curveModel",
+            "creatorFeePercent", "protocolFeePercent", "antiWhaleMaxPercent",
+            "antiBotCooldownSec", "stakingVaultEnabled", "stakingApyPercent",
+            "solidityCode", "securityScore", "securityAuditSummary",
+            "tokenomicsReasoning", "suggestedTags", "graduationTargetEth"
+          ],
+          properties: {
+            tokenName: { type: Type.STRING },
+            tokenSymbol: { type: Type.STRING },
+            category: { type: Type.STRING },
+            description: { type: Type.STRING },
+            initialSupply: { type: Type.NUMBER },
+            basePriceEth: { type: Type.NUMBER },
+            slopeK: { type: Type.NUMBER },
+            curveModel: { type: Type.STRING },
+            creatorFeePercent: { type: Type.NUMBER },
+            protocolFeePercent: { type: Type.NUMBER },
+            antiWhaleMaxPercent: { type: Type.NUMBER },
+            antiBotCooldownSec: { type: Type.NUMBER },
+            stakingVaultEnabled: { type: Type.BOOLEAN },
+            stakingApyPercent: { type: Type.NUMBER },
+            solidityCode: { type: Type.STRING },
+            securityScore: { type: Type.NUMBER },
+            securityAuditSummary: { type: Type.STRING },
+            tokenomicsReasoning: { type: Type.STRING },
+            suggestedTags: { type: Type.ARRAY, items: { type: Type.STRING } },
+            graduationTargetEth: { type: Type.NUMBER }
+          }
+        }
+      }
+    });
+
+    const text = response.text || "{}";
+    res.json(JSON.parse(text));
+  } catch (error: any) {
+    console.error("AI Propose Deployment Error:", error);
+    res.status(500).json({ error: error.message || "An error occurred while generating deployment proposal." });
+  }
+});
+
 // AI Agent Chat proxy endpoint
 app.post("/api/ai/agent-chat", async (req, res) => {
   try {
