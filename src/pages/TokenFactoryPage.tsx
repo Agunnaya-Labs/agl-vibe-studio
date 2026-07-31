@@ -27,7 +27,8 @@ import {
   ArrowRight,
   Flame,
   FlameKindling,
-  Trash2
+  Trash2,
+  Fuel
 } from "lucide-react";
 import { 
   TOKEN_FACTORY_ADDRESS, 
@@ -42,6 +43,8 @@ import {
 } from "../lib/tokenFactory";
 import ContractMonitor from "../components/ContractMonitor";
 import AIDeploymentWizardModal from "../components/AIDeploymentWizardModal";
+import TokenSecurityAudit from "../components/TokenSecurityAudit";
+import GasCostEstimator from "../components/GasCostEstimator";
 import { WalletState } from "../types";
 import { Wand2 } from "lucide-react";
 
@@ -79,11 +82,16 @@ export default function TokenFactoryPage({
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [copiedMap, setCopiedMap] = useState<Record<string, boolean>>({});
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [auditTargetAddress, setAuditTargetAddress] = useState<string | null>(null);
 
   // Individual token creator lookup tool
   const [lookupAddress, setLookupAddress] = useState("");
   const [lookupCreator, setLookupCreator] = useState<string | null>(null);
   const [isSearchingCreator, setIsSearchingCreator] = useState(false);
+
+  // Gas cost estimator state
+  const [showGasEstimator, setShowGasEstimator] = useState(true);
+  const [activeNetworkId, setActiveNetworkId] = useState("base-mainnet");
 
   // Search filter for token list
   const [searchFilter, setSearchFilter] = useState("");
@@ -450,6 +458,18 @@ export default function TokenFactoryPage({
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button
+              id="btn-toggle-gas-estimator"
+              onClick={() => setShowGasEstimator(!showGasEstimator)}
+              className={`px-4 py-2.5 rounded-xl border text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                showGasEstimator
+                  ? "bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md shadow-amber-500/10"
+                  : "bg-white/5 text-zinc-300 border-white/10 hover:border-white/20"
+              }`}
+            >
+              <Fuel className="w-4 h-4 text-amber-400" />
+              <span>{showGasEstimator ? "Hide Gas Estimator" : "Gas Cost Estimator"}</span>
+            </button>
+            <button
               onClick={() => setIsWizardOpen(true)}
               className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-blue via-brand-purple to-purple-600 hover:opacity-95 text-white font-bold text-xs font-display flex items-center justify-center gap-2 transition-all shadow-lg shadow-brand-purple/20"
             >
@@ -513,6 +533,16 @@ export default function TokenFactoryPage({
         }}
         showToast={showToast}
       />
+
+      {/* GAS COST ESTIMATOR HELPER COMPONENT */}
+      {showGasEstimator && (
+        <GasCostEstimator
+          onSelectNetwork={(netId) => {
+            setActiveNetworkId(netId);
+          }}
+          showToast={showToast}
+        />
+      )}
 
       {/* TWO-COLUMN GRID: FORM & CREATOR LOOKUP */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1232,7 +1262,7 @@ export default function TokenFactoryPage({
                     </button>
                   )}
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-1.5">
                     <button
                       onClick={() => {
                         setBulkTokenAddress(item.address);
@@ -1240,10 +1270,10 @@ export default function TokenFactoryPage({
                         if (el) el.scrollIntoView({ behavior: "smooth" });
                         showToast(`Selected ${item.name || "Token"} for Bulk Transfer`, "info");
                       }}
-                      className="py-1.5 px-2.5 rounded-xl bg-[#0052FF]/10 hover:bg-[#0052FF]/20 border border-[#0052FF]/30 text-blue-300 font-mono text-[10px] font-bold flex items-center justify-center gap-1 transition-all"
+                      className="py-1.5 px-2 rounded-xl bg-[#0052FF]/10 hover:bg-[#0052FF]/20 border border-[#0052FF]/30 text-blue-300 font-mono text-[9px] font-bold flex items-center justify-center gap-1 transition-all"
                     >
                       <Send className="w-3 h-3 text-[#0052FF]" />
-                      <span>Airdrop / Bulk</span>
+                      <span>Airdrop</span>
                     </button>
 
                     <button
@@ -1254,10 +1284,18 @@ export default function TokenFactoryPage({
                         if (el) el.scrollIntoView({ behavior: "smooth" });
                         showToast(`Selected ${item.name || "Token"} for Burning`, "info");
                       }}
-                      className="py-1.5 px-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-mono text-[10px] font-bold flex items-center justify-center gap-1 transition-all"
+                      className="py-1.5 px-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-mono text-[9px] font-bold flex items-center justify-center gap-1 transition-all"
                     >
                       <Flame className="w-3 h-3 text-rose-400" />
-                      <span>Burn Tokens</span>
+                      <span>Burn</span>
+                    </button>
+
+                    <button
+                      onClick={() => setAuditTargetAddress(item.address)}
+                      className="py-1.5 px-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-mono text-[9px] font-bold flex items-center justify-center gap-1 transition-all"
+                    >
+                      <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                      <span>Audit</span>
                     </button>
                   </div>
                 </div>
@@ -1287,6 +1325,25 @@ export default function TokenFactoryPage({
           }
         }}
       />
+
+      {/* Security Audit Modal */}
+      {auditTargetAddress && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto my-auto">
+            <button
+              onClick={() => setAuditTargetAddress(null)}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all"
+              title="Close Audit"
+            >
+              ✕
+            </button>
+            <TokenSecurityAudit
+              initialAddress={auditTargetAddress}
+              showToast={showToast}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

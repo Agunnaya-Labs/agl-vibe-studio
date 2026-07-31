@@ -167,6 +167,7 @@ export interface WalletState {
   sponsoredGasEth: number; // Mock AA gas sponsorship
   aglTokenBalance: number; // Native utility token Agunnaya Labs Token
   aglCredits: number; // Computational credits earned via on-chain AGL burning
+  aglLiquidityStaked?: number;
 }
 
 export interface Activity {

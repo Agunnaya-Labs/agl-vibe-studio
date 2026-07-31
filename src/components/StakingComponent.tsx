@@ -15,10 +15,12 @@ import {
   ChevronRight,
   Info,
   Unlock,
-  Skull
+  Skull,
+  Calculator
 } from "lucide-react";
 import { WalletState } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
+import APYCalculator from "./APYCalculator";
 
 // Constants & ABI definitions matching contract at 0xd4B61B4876c15e78e0275EbA52cf62D55ED5fD30
 const BASE_RPC_URL = "https://mainnet.base.org";
@@ -92,7 +94,7 @@ export default function StakingComponent({
   const [stakeAmount, setStakeAmount] = useState<string>("");
   const [selectedTierId, setSelectedTierId] = useState<number>(0);
   const [currentTimeSec, setCurrentTimeSec] = useState<number>(Math.floor(Date.now() / 1000));
-  const [activeTab, setActiveTab] = useState<"stake" | "positions">("stake");
+  const [activeTab, setActiveTab] = useState<"stake" | "positions" | "calculator">("stake");
 
   // Keep clock running for countdowns and real-time reward accrual
   useEffect(() => {
@@ -691,6 +693,18 @@ export default function StakingComponent({
             </span>
           )}
         </button>
+        <button
+          id="tab-apy-calculator"
+          onClick={() => setActiveTab("calculator")}
+          className={`px-5 py-2.5 text-xs font-bold font-display border-b-2 transition-all flex items-center gap-1.5 ${
+            activeTab === "calculator"
+              ? "border-[#A855F7] text-white bg-[#A855F7]/5"
+              : "border-transparent text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          <Calculator className="w-3.5 h-3.5 text-purple-400" />
+          <span>APY Calculator</span>
+        </button>
       </div>
 
       {/* TAB 1: STAKE FORM */}
@@ -948,6 +962,20 @@ export default function StakingComponent({
             </div>
           )}
         </div>
+      )}
+
+      {/* TAB 3: APY CALCULATOR */}
+      {activeTab === "calculator" && (
+        <APYCalculator
+          userAglBalance={wallet.aglTokenBalance}
+          stakingTiers={stakingTiers}
+          onApplyToStake={(amt, tierId) => {
+            setStakeAmount(amt);
+            setSelectedTierId(tierId);
+            setActiveTab("stake");
+            showToast(`Applied ${parseFloat(amt).toLocaleString()} AGL to Stake Form!`, "info");
+          }}
+        />
       )}
     </div>
   );

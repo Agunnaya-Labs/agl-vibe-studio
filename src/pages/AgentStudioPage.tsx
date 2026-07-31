@@ -393,6 +393,19 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
     setAttachedImage(null);
   };
 
+  // Live preview agent directives in sandbox mode
+  const handlePreviewAgentDirectives = (agent: AIAgent) => {
+    setName(agent.name);
+    setSymbol(agent.symbol);
+    setDescription(agent.description);
+    setSystemPrompt(agent.systemPrompt || agent.description);
+    setSubFee(String(agent.usageFeeEth || 0.001));
+    setForgeMode("preview");
+    setActiveTab("agents");
+    showToast(`Loaded live prompt preview sandbox for ${agent.name}`, "info");
+    addTerminalLog("info", `AGENT PREVIEW: Loaded agent [${agent.name}] directives into interactive preview sandbox.`);
+  };
+
   // Send message in advanced chat
   const handleSendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -822,7 +835,8 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                   </div>
                 </div>
 
-                <form onSubmit={handleCreateAgent} className="space-y-4">
+                {forgeMode === "configure" ? (
+                  <form onSubmit={handleCreateAgent} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="md:col-span-2">
                       <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">Agent Name</label>
@@ -1190,6 +1204,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                   </div>
                 </div>
               )}
+              </div>
 
               {/* Advanced Chat Panel Box */}
               {activeChatAgent && (
@@ -1477,15 +1492,26 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                         </div>
                       </div>
 
-                      {/* Prompt Chat Action */}
-                      <button
-                        id={`chat-agent-trigger-${agent.id}`}
-                        onClick={() => handleStartChat(agent)}
-                        className="w-full py-2 bg-brand-purple/20 hover:bg-brand-purple text-brand-purple hover:text-white border border-brand-purple/30 text-[10px] font-bold font-mono rounded-lg transition-all flex items-center justify-center gap-1.5"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        <span>Prompt AI Agent</span>
-                      </button>
+                      {/* Action Buttons: Preview Directives & Prompt Agent */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          id={`preview-agent-trigger-${agent.id}`}
+                          onClick={() => handlePreviewAgentDirectives(agent)}
+                          className="py-2 px-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold font-mono rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-purple-400" />
+                          <span>Live Preview</span>
+                        </button>
+
+                        <button
+                          id={`chat-agent-trigger-${agent.id}`}
+                          onClick={() => handleStartChat(agent)}
+                          className="py-2 px-2 bg-brand-purple/20 hover:bg-brand-purple text-brand-purple hover:text-white border border-brand-purple/30 text-[10px] font-bold font-mono rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>Prompt Agent</span>
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1543,7 +1569,32 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">Visual Prompt Instructions</label>
+                  <div className="space-y-1 mb-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">Visual Prompt Instructions</label>
+                      <span className="text-[9px] font-mono text-purple-400 font-bold">Preview Presets:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {[
+                        { label: "⚡ Holographic Token Emblem", prompt: "A sleek 3D holographic neon lotus emblem floating in dark space, futuristic Web3 token icon, octane render, 8k resolution, glowing violet accents" },
+                        { label: "⚡ Base DEX Hero Banner", prompt: "Futuristic decentralized exchange dashboard overview with neon blue charts, glassmorphic trading terminals, high contrast, ultra clean UI layout" },
+                        { label: "⚡ AI Agent Cyber Mascot", prompt: "A friendly humanoid AI robotics avatar wearing high-tech visor, isometric perspective, soft purple lighting, metallic finishes" }
+                      ].map((preset, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          id={`btn-preview-image-preset-${idx}`}
+                          onClick={() => {
+                            setImagePrompt(preset.prompt);
+                            showToast(`Loaded Image Prompt Preview: ${preset.label}`, "info");
+                          }}
+                          className="px-2 py-0.5 rounded-lg bg-zinc-950 border border-white/10 hover:border-purple-500/40 hover:bg-purple-500/10 text-[10px] font-mono text-zinc-400 hover:text-white transition-all cursor-pointer"
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <textarea
                     rows={4}
                     value={imagePrompt}
@@ -1675,7 +1726,32 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-1.5">Video Prompt Instructions</label>
+                  <div className="space-y-1 mb-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] uppercase font-bold tracking-wider text-zinc-500">Video Prompt Instructions</label>
+                      <span className="text-[9px] font-mono text-purple-400 font-bold">Preview Motion Scripts:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {[
+                        { label: "⚡ Golden Coin Flip Loop", prompt: "A 3D golden crypto coin rotating smoothly in place against a dark indigo starry galaxy background, cinematic lighting, continuous fluid motion loop" },
+                        { label: "⚡ Base Liquidity Stream", prompt: "Glowing electric blue streams of data and tokens pulsing along circuit board traces into a central glowing vault core, ultra detailed" },
+                        { label: "⚡ Cyber Hologram Globe", prompt: "A spinning translucent holographic globe showing global Web3 node connections, floating digital particles, futuristic sci-fi ambiance" }
+                      ].map((preset, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          id={`btn-preview-video-preset-${idx}`}
+                          onClick={() => {
+                            setVideoPrompt(preset.prompt);
+                            showToast(`Loaded Motion Script Preview: ${preset.label}`, "info");
+                          }}
+                          className="px-2 py-0.5 rounded-lg bg-zinc-950 border border-white/10 hover:border-purple-500/40 hover:bg-purple-500/10 text-[10px] font-mono text-zinc-400 hover:text-white transition-all cursor-pointer"
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <textarea
                     rows={2}
                     value={videoPrompt}
@@ -1792,16 +1868,16 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                 <div className="relative">
                   <input
                     type="number"
-                    value={liquidityAmount}
-                    onChange={(e) => setLiquidityAmount(e.target.value)}
-                    placeholder="1000"
-                    min="100"
+                    value={topUpAglAmount}
+                    onChange={(e) => setTopUpAglAmount(e.target.value)}
+                    placeholder="10"
+                    min="1"
                     className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-brand-purple/40 font-mono"
                   />
                   <button
                     type="button"
-                    onClick={() => setLiquidityAmount(String(wallet.aglTokenBalance || 1000))}
-                    className="absolute right-3 top-2.5 text-[10px] bg-brand-purple/20 text-brand-purple px-2 py-1 rounded font-mono font-bold hover:bg-brand-purple hover:text-white transition-all"
+                    onClick={() => setTopUpAglAmount(String(wallet.aglTokenBalance || 10))}
+                    className="absolute right-3 top-2.5 text-[10px] bg-brand-purple/20 text-brand-purple px-2 py-1 rounded font-mono font-bold hover:bg-brand-purple hover:text-white transition-all cursor-pointer"
                   >
                     MAX
                   </button>
@@ -1812,18 +1888,18 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                 <span className="font-bold uppercase text-purple-300 flex items-center gap-1">
                   <Zap className="w-3.5 h-3.5 text-amber-400" /> Output Summary:
                 </span>
-                <p>• Mint +{((parseFloat(liquidityAmount) || 0) * 2).toLocaleString()} AGL Credits to wallet</p>
-                <p>• Permanently burn {liquidityAmount || 0} $AGL supply</p>
-                <p>• Inject +{((parseFloat(liquidityAmount) || 0) * 0.00005).toFixed(4)} ETH into $AGL Bonding Pool</p>
+                <p>• Mint +{((parseFloat(topUpAglAmount) || 0) * 100).toLocaleString()} AGL Credits to wallet</p>
+                <p>• Permanently burn {topUpAglAmount || 0} $AGL supply</p>
+                <p>• Inject +{((parseFloat(topUpAglAmount) || 0) * 0.00005).toFixed(5)} ETH into $AGL Bonding Pool</p>
               </div>
 
               <button
                 id="btn-confirm-liquidity-topup"
-                onClick={handleGenerateLiquidity}
-                disabled={liquidityProcessing}
+                onClick={handleBuyCreditsAndInjectLiquidity}
+                disabled={isBuyingCredits}
                 className="w-full py-3 rounded-xl bg-brand-purple hover:bg-purple-600 font-semibold font-mono text-xs text-white shadow-lg shadow-brand-purple/20 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                {liquidityProcessing ? (
+                {isBuyingCredits ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-white" />
                     <span>Executing Base contract liquidity boost...</span>

@@ -4,6 +4,8 @@ import { Token, WalletState, Activity, PriceAlert } from "../types";
 import BondingCurveChart from "../components/BondingCurveChart";
 import BondingCurveAnalytics from "../components/BondingCurveAnalytics";
 import BondingCurveTrading from "../components/BondingCurveTrading";
+import TokenSecurityAudit from "../components/TokenSecurityAudit";
+import LiquidityDepthChart from "../components/LiquidityDepthChart";
 import TerminalLog, { TerminalLine } from "../components/TerminalLog";
 import ImageWithFallback from "../components/ImageWithFallback";
 import { LineChart, Line, ResponsiveContainer, YAxis, AreaChart, Area, Tooltip as RechartsTooltip } from "recharts";
@@ -33,7 +35,9 @@ import {
   Settings,
   Info,
   Flame,
-  Check
+  Check,
+  ShieldCheck,
+  Layers
 } from "lucide-react";
 
 interface TradePageProps {
@@ -68,7 +72,7 @@ export default function TradePage({
   const [inputVal, setInputVal] = useState("");
   const [estimatedOutput, setEstimatedOutput] = useState(0);
   const [tradeLoading, setTradeLoading] = useState(false);
-  const [chartView, setChartView] = useState<"bonding" | "analytics" | "gecko">("bonding");
+  const [chartView, setChartView] = useState<"bonding" | "analytics" | "depth" | "gecko" | "audit">("bonding");
 
   // Premium trading utility states
   const [slippage, setSlippage] = useState<number>(1.0);
@@ -517,6 +521,19 @@ export default function TradePage({
                     Slippage & Math Analytics
                   </button>
                   <button
+                    id="chart-mode-depth"
+                    type="button"
+                    onClick={() => setChartView("depth")}
+                    className={`px-3 py-1.5 rounded-md text-[10px] font-mono font-bold transition-all flex items-center gap-1.5 ${
+                      chartView === "depth"
+                        ? "bg-purple-600 text-white shadow-md font-extrabold"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    Liquidity Depth Chart
+                  </button>
+                  <button
                     id="chart-mode-gecko"
                     type="button"
                     onClick={() => setChartView("gecko")}
@@ -528,6 +545,19 @@ export default function TradePage({
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
                     Live Base DEX (GeckoTerminal)
+                  </button>
+                  <button
+                    id="chart-mode-audit"
+                    type="button"
+                    onClick={() => setChartView("audit")}
+                    className={`px-3 py-1.5 rounded-md text-[10px] font-mono font-bold transition-all flex items-center gap-1.5 ${
+                      chartView === "audit"
+                        ? "bg-emerald-400 text-black shadow-md font-extrabold"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Security Audit
                   </button>
                 </div>
               </div>
@@ -554,6 +584,20 @@ export default function TradePage({
                   setInputVal(amt.toString());
                   showToast(`Filled ${mode.toUpperCase()} order for ${amt} ${mode === "buy" ? "ETH" : token.symbol}`, "info");
                 }} 
+              />
+            ) : chartView === "depth" ? (
+              <LiquidityDepthChart
+                token={token}
+                onApplyTradeAmount={(amt, mode) => {
+                  setTradeMode(mode);
+                  setInputVal(amt);
+                  showToast(`Applied ${mode.toUpperCase()} depth order for ${amt} ${mode === "buy" ? "ETH" : token.symbol}`, "info");
+                }}
+              />
+            ) : chartView === "audit" ? (
+              <TokenSecurityAudit 
+                token={token}
+                showToast={showToast}
               />
             ) : (
               <div className="w-full h-[450px] rounded-2xl overflow-hidden border border-white/10 bg-black relative shadow-2xl">
