@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bot, Send, BrainCircuit, X, MessageSquare, Zap, Coins } from "lucide-react";
+import { Bot, Send, BrainCircuit, X, MessageSquare, Zap, Coins, Pin, PinOff } from "lucide-react";
 import { chatWithAgentAI } from "../lib/gemini";
 import { WalletState } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
@@ -10,6 +10,8 @@ interface AIAssistantSidebarProps {
   wallet: WalletState;
   onRefreshWallet: () => void;
   showToast: (message: string, type: "success" | "error" | "info") => void;
+  isLocked?: boolean;
+  onToggleLock?: () => void;
 }
 
 export default function AIAssistantSidebar({ 
@@ -17,7 +19,9 @@ export default function AIAssistantSidebar({
   onClose, 
   wallet, 
   onRefreshWallet, 
-  showToast 
+  showToast,
+  isLocked = false,
+  onToggleLock
 }: AIAssistantSidebarProps) {
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([
     { role: "assistant", content: "Greetings! I am the Agunnaya Labs AI Assistant. Ask me anything about building dApps, deploying on Base, staking, or modeling bonding curve mathematics." }
@@ -171,17 +175,41 @@ export default function AIAssistantSidebar({
               <BrainCircuit className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold font-display text-white">AI Web3 Advisor</h3>
-              <span className="text-[10px] text-zinc-500 font-mono">Powered by Gemini 3.5</span>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold font-display text-white">AI Web3 Advisor</h3>
+                {isLocked && (
+                  <span className="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded-full font-mono font-bold flex items-center gap-1">
+                    <Pin className="w-2.5 h-2.5" /> Locked
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-zinc-500 font-mono">Powered by Gemini 3.6</span>
             </div>
           </div>
-          <button 
-            id="close-ai-drawer"
-            onClick={onClose}
-            className="p-1 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            {onToggleLock && (
+              <button
+                type="button"
+                onClick={onToggleLock}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  isLocked 
+                    ? "text-purple-300 bg-purple-500/20 border border-purple-500/30" 
+                    : "text-zinc-500 hover:text-white hover:bg-white/5"
+                }`}
+                title={isLocked ? "Pinned open (Click to unlock auto-close)" : "Lock drawer pinned open"}
+              >
+                {isLocked ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+              </button>
+            )}
+            <button 
+              id="close-ai-drawer"
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5"
+              title="Close Drawer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Message Stream */}

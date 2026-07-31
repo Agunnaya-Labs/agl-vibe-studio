@@ -140,6 +140,8 @@ export interface AIAgent {
   systemPrompt: string;
   avatarUrl: string;
   aglRewardDiscounts: boolean;
+  backedByAglLiquidity?: boolean;
+  aglLiquidityBoosted?: number;
   chatHistory: Array<{ role: "user" | "assistant"; content: string }>;
   createdAt: number;
 }

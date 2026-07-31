@@ -54,7 +54,7 @@ Your task is to parse the user's prompt for a blockchain project on Base and ret
 Format the output strictly as JSON.`;
 
     const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.6-flash",
       contents: `Build a project of type "${type || 'ERC-20 Token'}" based on this prompt: "${prompt}"`,
       config: {
         systemInstruction,
@@ -119,7 +119,7 @@ Calculate optimal initial supply, base price P_0 (in ETH, e.g. 0.00001), curve s
 Provide standard OpenZeppelin compliant Solidity contract code implementing ERC20 + Ownable + BondingCurve.`;
 
     const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.6-flash",
       contents: `Propose deployment parameters for token requirements: "${prompt}" (Category preference: ${categoryPreference || "Auto-Detect"})`,
       config: {
         systemInstruction,
@@ -189,7 +189,7 @@ Your profile details are:
 
 Roleplay as this specific AI Agent. Speak intelligently, with confidence, referring to yourself as an on-chain autonomous consciousness. Maintain the Web3 terminal aesthetic. Do not break character. Speak about blockchain, tokenomics, Base chain, and your agent core functions. Keep replies concise and extremely engaging.`;
 
-    const modelToUse = model || "gemini-3.5-flash";
+    const modelToUse = model || "gemini-3.6-flash";
 
     // Map conversation messages to Gemini contents structure
     const formattedContents = messages.map((m: any, idx: number) => {
@@ -286,7 +286,7 @@ Ensure the output:
 Return only the optimized prompt text directly. No quotes, no preamble, no commentary.`;
 
     const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.6-flash",
       contents: `Optimize this directive: "${prompt}"`,
       config: {
         systemInstruction,
@@ -339,7 +339,7 @@ User instruction/guideline for response: ${prompt}`
       : `Draft a new email with this instruction: ${prompt}`;
 
     const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.6-flash",
       contents: promptMessage,
       config: {
         systemInstruction,
@@ -378,7 +378,7 @@ app.post("/api/ai/transcribe", async (req, res) => {
     const client = getAIClient();
 
     const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.6-flash",
       contents: [
         {
           inlineData: {

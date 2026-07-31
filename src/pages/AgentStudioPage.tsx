@@ -14,7 +14,8 @@ import {
 import { 
   Bot, Send, BrainCircuit, X, MessageSquare, Plus, Zap, Award, Coins, 
   Sparkles, Cpu, Layers, ShieldCheck, Mic, MicOff, Image as ImageIcon, 
-  MapPin, Eye, Film, Download, RefreshCw, Sliders, Play, Trash2, Loader2, Info
+  MapPin, Eye, Film, Download, RefreshCw, Sliders, Play, Trash2, Loader2, Info,
+  Flame, TrendingUp, Check, Copy, ArrowRight, Lock, Code
 } from "lucide-react";
 
 interface AgentStudioPageProps {
@@ -36,6 +37,9 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
   // Tabs: "agents" (Agent Forge & chats) or "creative" (Media Generator)
   const [activeTab, setActiveTab] = useState<"agents" | "creative">("agents");
 
+  // Forge Sub-Tab: "configure" or "preview"
+  const [forgeMode, setForgeMode] = useState<"configure" | "preview">("configure");
+
   // Agent Creator State
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
@@ -43,6 +47,18 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
   const [systemPrompt, setSystemPrompt] = useState("");
   const [subFee, setSubFee] = useState("0.001");
   const [loading, setLoading] = useState(false);
+  const [deployPaymentMethod, setDeployPaymentMethod] = useState<"agl_credits" | "eth">("agl_credits");
+
+  // Interactive Prompt Preview Sandbox State
+  const [previewInput, setPreviewInput] = useState("");
+  const [previewMessages, setPreviewMessages] = useState<ChatMessage[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewMetrics, setPreviewMetrics] = useState<{ tokensProcessed: number; latencyMs: number } | null>(null);
+
+  // AGL Credits Top-Up & Liquidity Generator Modal
+  const [isLiquidityModalOpen, setIsLiquidityModalOpen] = useState(false);
+  const [topUpAglAmount, setTopUpAglAmount] = useState("10"); // 10 AGL = 1,000 Credits
+  const [isBuyingCredits, setIsBuyingCredits] = useState(false);
 
   // Active chat state
   const [activeChatAgent, setActiveChatAgent] = useState<AIAgent | null>(null);
@@ -52,7 +68,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
   const [optimizingPrompt, setOptimizingPrompt] = useState(false);
 
   // Advanced Chat Settings State
-  const [selectedModel, setSelectedModel] = useState("gemini-3.5-flash");
+  const [selectedModel, setSelectedModel] = useState("gemini-3.6-flash");
   const [highThinking, setHighThinking] = useState(false);
   const [enableMapsGrounding, setEnableMapsGrounding] = useState(false);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -107,7 +123,152 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
     }
   };
 
-  // Deploy AI Agent
+  // Run Prompt Preview Sandbox query
+  const handleRunPreviewPrompt = async (e?: React.FormEvent, customPromptText?: string) => {
+    if (e) e.preventDefault();
+    const queryText = customPromptText || previewInput.trim();
+    if (!queryText || previewLoading) return;
+
+    const currentSystemPrompt = systemPrompt.trim() || "You are an autonomous AI Agent assistant deployed on Base Mainnet. Respond professionally.";
+    const agentName = name.trim() || "Draft AI Agent";
+    const agentSymbol = symbol.trim().toUpperCase() || "DRAFT";
+
+    const userMsg: ChatMessage = { role: "user", content: queryText };
+    setPreviewMessages(prev => [...prev, userMsg]);
+    if (!customPromptText) setPreviewInput("");
+    setPreviewLoading(true);
+
+    const startTime = Date.now();
+    try {
+      const mockAgent: AIAgent = {
+        id: "preview_agent",
+        name: agentName,
+        symbol: agentSymbol,
+        description: description || "Draft Agent Sandbox Preview",
+        contractAddress: "0xPreviewAgentAddress",
+        creator: wallet.address || "0xDemoUser",
+        tokenPrice: 0.005,
+        usageFeeEth: parseFloat(subFee) || 0.001,
+        lifetimeRevenueEth: 0,
+        queryCount: 0,
+        systemPrompt: currentSystemPrompt,
+        avatarUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&auto=format&fit=crop&q=60",
+        aglRewardDiscounts: true,
+        chatHistory: [],
+        createdAt: Date.now()
+      };
+
+      const apiMessages = previewMessages.map(m => ({ role: m.role, content: m.content }));
+      apiMessages.push({ role: "user", content: queryText });
+
+      const result = await chatWithAgentAdvancedAI(
+        apiMessages,
+        mockAgent,
+        {
+          model: selectedModel,
+          thinkingLevel: highThinking ? "HIGH" : "LOW",
+          enableMapsGrounding,
+          location
+        }
+      );
+
+      const endTime = Date.now();
+      const latency = endTime - startTime;
+      const estTokens = Math.round((currentSystemPrompt.length + queryText.length + result.content.length) / 3.8);
+
+      setPreviewMetrics({
+        tokensProcessed: estTokens,
+        latencyMs: latency
+      });
+
+      setPreviewMessages(prev => [...prev, {
+        role: "assistant",
+        content: result.content,
+        groundingMetadata: result.groundingMetadata
+      }]);
+
+      addTerminalLog("info", `AGENT PREVIEW: Evaluated directives for [${agentName}] (${estTokens} tokens, ${latency}ms latency).`);
+    } catch (err: any) {
+      setPreviewMessages(prev => [...prev, {
+        role: "assistant",
+        content: `Preview Sandbox Error: ${err.message || "Failed to execute prompt directives."}`
+      }]);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // Export Agent Spec JSON
+  const handleExportAgentSpec = () => {
+    const spec = {
+      name: name || "Draft AI Agent",
+      symbol: (symbol || "DRAFT").toUpperCase(),
+      description: description || "Autonomous Agent Profile",
+      usageFeeEth: parseFloat(subFee) || 0.001,
+      systemPrompt: systemPrompt || "Default instructions",
+      selectedModel,
+      backedByAglLiquidity: deployPaymentMethod === "agl_credits",
+      createdAt: new Date().toISOString()
+    };
+    const jsonStr = JSON.stringify(spec, null, 2);
+    navigator.clipboard.writeText(jsonStr);
+    showToast("Agent Spec JSON copied to clipboard!", "success");
+    addTerminalLog("info", "STUDIO: Exported Agent Specification JSON configuration.");
+  };
+
+  // Top Up AGL Credits & Inject Liquidity into $AGL Token Pool
+  const handleBuyCreditsAndInjectLiquidity = () => {
+    const aglVal = parseFloat(topUpAglAmount);
+    if (isNaN(aglVal) || aglVal <= 0) {
+      showToast("Enter a valid AGL amount.", "error");
+      return;
+    }
+
+    setIsBuyingCredits(true);
+    addTerminalLog("info", `AGLCredits PROTOCOL: Initiating burn of ${aglVal} AGL to issue credits & generate token liquidity...`);
+
+    setTimeout(() => {
+      const creditsIssued = Math.round(aglVal * 100); // 1 AGL = 100 Credits
+      const ethLiquidityInjected = parseFloat((aglVal * 0.00005).toFixed(5));
+
+      // Update Wallet
+      const currentCredits = wallet.aglCredits || 0;
+      const currentAgl = wallet.aglTokenBalance || 0;
+      const updatedWallet: WalletState = {
+        ...wallet,
+        aglCredits: currentCredits + creditsIssued,
+        aglTokenBalance: Math.max(0, currentAgl - aglVal)
+      };
+      AgunnayaDatabase.saveWallet(updatedWallet);
+
+      // Boost $AGL Token Reserve Pool in AgunnayaDatabase
+      const allTokens = AgunnayaDatabase.getTokens();
+      const aglTokenIndex = allTokens.findIndex(t => t.symbol === "AGL" || t.address.toLowerCase() === "0xea1221b4d80a89bd8c75248fae7c176bd1854698");
+      if (aglTokenIndex !== -1) {
+        allTokens[aglTokenIndex].reserveEth = (allTokens[aglTokenIndex].reserveEth || 0) + ethLiquidityInjected;
+        allTokens[aglTokenIndex].volume24h = (allTokens[aglTokenIndex].volume24h || 0) + (ethLiquidityInjected * 2);
+        AgunnayaDatabase.saveTokens(allTokens);
+      }
+
+      AgunnayaDatabase.addActivity({
+        type: "buy",
+        tokenSymbol: "AGL",
+        tokenAddress: "0xea1221b4d80a89bd8c75248fae7c176bd1854698",
+        user: wallet.address || "0xUser",
+        amount: aglVal,
+        ethValue: ethLiquidityInjected,
+        details: `Burned ${aglVal} AGL via AGLCredits contract: Issued ${creditsIssued.toLocaleString()} Credits & injected +${ethLiquidityInjected} ETH into AGL Pool`
+      });
+
+      addTerminalLog("success", `AGLCredits PROTOCOL: Successfully issued ${creditsIssued.toLocaleString()} Credits and added +${ethLiquidityInjected} ETH to AGL Token Liquidity Pool!`);
+      showToast(`Purchased ${creditsIssued.toLocaleString()} Credits! Injected +${ethLiquidityInjected} ETH Liquidity into $AGL Pool.`, "success");
+      
+      setIsBuyingCredits(false);
+      setIsLiquidityModalOpen(false);
+    }, 1200);
+  };
+
+  // Deploy AI Agent with AGL Credits Liquidity Boost or ETH
   const handleCreateAgent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!wallet.isConnected) {
@@ -115,8 +276,28 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
       return;
     }
     if (!name || !symbol || !description || !systemPrompt) return;
-    setLoading(true);
 
+    const currentCredits = wallet.aglCredits || 0;
+    const isAglDeploy = deployPaymentMethod === "agl_credits";
+
+    if (isAglDeploy) {
+      if (currentCredits < 500) {
+        if ((wallet.aglTokenBalance || 0) >= 5) {
+          showToast("Converting 5 AGL into 500 AGL Credits for deployment...", "info");
+        } else {
+          showToast("Insufficient AGL Credits (500 required). Please top up or select ETH.", "error");
+          setIsLiquidityModalOpen(true);
+          return;
+        }
+      }
+    } else {
+      if (wallet.balanceEth < 0.005) {
+        showToast("Insufficient ETH balance for deployment fee (0.005 ETH required).", "error");
+        return;
+      }
+    }
+
+    setLoading(true);
     addTerminalLog("info", `Launching autonomous AI Agent and registering standard token model ${symbol}...`);
 
     setTimeout(() => {
@@ -138,6 +319,8 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
         avatarUrl: mockAvatar,
         systemPrompt: systemPrompt,
         aglRewardDiscounts: true,
+        backedByAglLiquidity: isAglDeploy,
+        aglLiquidityBoosted: isAglDeploy ? 500 : 0,
         chatHistory: [
           { role: "assistant", content: `Sentinel security subroutines loaded for ${name}. Ready to assist.` }
         ],
@@ -148,8 +331,36 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
       current.push(newAgent);
       AgunnayaDatabase.saveAgents(current);
 
-      // Deduct ETH
-      const updatedWallet = { ...wallet, balanceEth: Math.max(0, wallet.balanceEth - 0.005) };
+      // Deduct Credits / ETH & Inject Liquidity into AGL Pool
+      let updatedWallet: WalletState;
+      if (isAglDeploy) {
+        const remainingCredits = Math.max(0, currentCredits - 500);
+        let newAglBal = wallet.aglTokenBalance || 0;
+        if (currentCredits < 500) {
+          newAglBal = Math.max(0, newAglBal - 5);
+        }
+        updatedWallet = {
+          ...wallet,
+          aglCredits: remainingCredits,
+          aglTokenBalance: newAglBal
+        };
+
+        // Boost $AGL Liquidity Pool in AgunnayaDatabase
+        const allTokens = AgunnayaDatabase.getTokens();
+        const aglTokenIndex = allTokens.findIndex(t => t.symbol === "AGL" || t.address.toLowerCase() === "0xea1221b4d80a89bd8c75248fae7c176bd1854698");
+        if (aglTokenIndex !== -1) {
+          allTokens[aglTokenIndex].reserveEth = (allTokens[aglTokenIndex].reserveEth || 0) + 0.025;
+          allTokens[aglTokenIndex].volume24h = (allTokens[aglTokenIndex].volume24h || 0) + 0.05;
+          AgunnayaDatabase.saveTokens(allTokens);
+        }
+
+        addTerminalLog("success", "AGLCredits PROTOCOL: 500 Credits burned! +0.025 ETH liquidity injected into $AGL Token Pool on Base Mainnet.");
+        showToast("AI Agent deployed! 500 AGL Credits burned & +0.025 ETH Liquidity injected into $AGL!", "success");
+      } else {
+        updatedWallet = { ...wallet, balanceEth: Math.max(0, wallet.balanceEth - 0.005) };
+        showToast("AI Agent deployed with 0.005 ETH fee!", "success");
+      }
+
       AgunnayaDatabase.saveWallet(updatedWallet);
       onRefreshAgents();
 
@@ -159,8 +370,8 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
         tokenAddress: newAgent.contractAddress,
         user: wallet.address,
         amount: 0,
-        ethValue: 0.005,
-        details: `Launched AI agent worker: ${newAgent.name} (${newAgent.symbol}) powered by Gemini LLM`
+        ethValue: isAglDeploy ? 0.025 : 0.005,
+        details: `Launched AI agent worker: ${newAgent.name} (${newAgent.symbol}) ${isAglDeploy ? "[Backed by AGL Liquidity]" : ""}`
       });
 
       addTerminalLog("success", `AI Agent fully registered. Metadata synced with token model: ${newAgent.contractAddress}`);
@@ -169,6 +380,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
       setSymbol("");
       setDescription("");
       setSystemPrompt("");
+      setForgeMode("configure");
     }, 2000);
   };
 
@@ -502,6 +714,54 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
         </div>
       </div>
 
+      {/* AGL Credits & Liquidity Generator Header Banner */}
+      <div className="glass-panel p-4 rounded-2xl border border-brand-purple/30 bg-gradient-to-r from-purple-950/40 via-zinc-900/60 to-zinc-950 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-brand-purple/20 border border-brand-purple/40 rounded-xl text-brand-purple shrink-0">
+            <Flame className="w-6 h-6 animate-pulse text-amber-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold font-display text-white">AGLCredits Liquidity Engine</h3>
+              <span className="text-[9px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full uppercase">
+                Base Protocol Active
+              </span>
+            </div>
+            <p className="text-xs text-zinc-400 font-sans mt-0.5">
+              Deploy agents using AGL Credits to automatically inject liquidity into the $AGL Token bonding pool.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+          <div className="bg-zinc-950/80 p-2.5 rounded-xl border border-white/10 flex items-center gap-3 font-mono">
+            <div>
+              <span className="text-[9px] text-zinc-500 uppercase block font-bold">Credits Balance</span>
+              <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                {(wallet.aglCredits || 0).toLocaleString()}
+              </span>
+            </div>
+            <div className="h-6 w-px bg-white/10" />
+            <div>
+              <span className="text-[9px] text-zinc-500 uppercase block font-bold">AGL Tokens</span>
+              <span className="text-xs font-bold text-purple-300">
+                {(wallet.aglTokenBalance || 0).toLocaleString()} AGL
+              </span>
+            </div>
+          </div>
+
+          <button
+            id="btn-open-liquidity-modal"
+            onClick={() => setIsLiquidityModalOpen(true)}
+            className="px-3.5 py-2.5 rounded-xl bg-brand-purple hover:bg-purple-600 text-white font-mono text-xs font-bold shadow-lg shadow-brand-purple/20 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <Coins className="w-4 h-4 text-amber-300" />
+            <span>Top Up & Inject Liquidity</span>
+          </button>
+        </div>
+      </div>
+
       <AnimatePresence mode="wait">
         {activeTab === "agents" ? (
           <motion.div 
@@ -515,14 +775,51 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
             {/* Create form panel */}
             <div className="lg:col-span-2 space-y-6">
               <div className="glass-panel p-6 rounded-2xl border border-white/5 bg-zinc-900/10 space-y-6">
-                <div>
-                  <h2 className="text-base font-bold font-display text-white flex items-center gap-2">
-                    <BrainCircuit className="w-5 h-5 text-brand-purple" />
-                    AI Agent Forge
-                  </h2>
-                  <p className="text-xs text-zinc-400 mt-1">
-                    Assemble fully autonomous agent profiles. Direct prompt directives shape their decision parameters, and they earn transaction fees in real-time when other users prompt them.
-                  </p>
+                
+                {/* Forge Top Navigation Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-4">
+                  <div>
+                    <h2 className="text-base font-bold font-display text-white flex items-center gap-2">
+                      <BrainCircuit className="w-5 h-5 text-brand-purple" />
+                      AI Agent Forge
+                    </h2>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      Configure autonomous directives or test prompt behavior in real-time before deploying to Base.
+                    </p>
+                  </div>
+
+                  {/* Forge Mode Toggle Switcher */}
+                  <div className="flex gap-1 bg-zinc-950 p-1 rounded-xl border border-white/10 shrink-0">
+                    <button
+                      type="button"
+                      id="subtab-forge-configure"
+                      onClick={() => setForgeMode("configure")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
+                        forgeMode === "configure"
+                          ? "bg-brand-purple text-white shadow-md"
+                          : "text-zinc-400 hover:text-white"
+                      }`}
+                    >
+                      <Sliders className="w-3.5 h-3.5" />
+                      <span>1. Configure</span>
+                    </button>
+                    <button
+                      type="button"
+                      id="subtab-forge-preview"
+                      onClick={() => setForgeMode("preview")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
+                        forgeMode === "preview"
+                          ? "bg-brand-purple text-white shadow-md"
+                          : "text-zinc-400 hover:text-white"
+                      }`}
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>2. Live Preview</span>
+                      {systemPrompt.trim() && (
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <form onSubmit={handleCreateAgent} className="space-y-4">
@@ -657,17 +954,242 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                     />
                   </div>
 
-                  <button
-                    id="agent-create-submit-btn"
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3 rounded-xl bg-brand-purple hover:bg-purple-600 font-semibold font-display text-xs text-white shadow-lg shadow-brand-purple/20 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all flex items-center justify-center gap-2"
-                  >
-                    <BrainCircuit className="w-4 h-4" />
-                    <span>{loading ? "Assembling cognitive layers..." : "Deploy AI Agent Worker"}</span>
-                  </button>
+                  {/* Payment Method Selector (AGL Credits vs ETH) */}
+                  <div className="p-3 bg-zinc-950 border border-white/10 rounded-xl space-y-2">
+                    <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-400 font-mono">
+                      Deployment Payment & AGL Liquidity Generation Model
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        id="deploy-payment-agl-credits"
+                        onClick={() => setDeployPaymentMethod("agl_credits")}
+                        className={`p-3 rounded-xl border text-left transition-all flex items-start justify-between cursor-pointer ${
+                          deployPaymentMethod === "agl_credits"
+                            ? "bg-purple-950/40 border-purple-500 text-white shadow-lg shadow-purple-500/10"
+                            : "bg-zinc-900/50 border-white/5 text-zinc-400 hover:border-white/20"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-1.5 font-bold text-xs text-white">
+                            <Flame className="w-4 h-4 text-amber-400" />
+                            <span>500 AGL Credits</span>
+                          </div>
+                          <span className="block text-[10px] text-purple-300 font-mono mt-0.5">
+                            ⚡ Burns Credits & Injects +0.025 ETH into $AGL LP Pool
+                          </span>
+                        </div>
+                        {deployPaymentMethod === "agl_credits" && <Check className="w-4 h-4 text-purple-400 shrink-0" />}
+                      </button>
+
+                      <button
+                        type="button"
+                        id="deploy-payment-eth"
+                        onClick={() => setDeployPaymentMethod("eth")}
+                        className={`p-3 rounded-xl border text-left transition-all flex items-start justify-between cursor-pointer ${
+                          deployPaymentMethod === "eth"
+                            ? "bg-blue-950/40 border-blue-500 text-white shadow-lg shadow-blue-500/10"
+                            : "bg-zinc-900/50 border-white/5 text-zinc-400 hover:border-white/20"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-1.5 font-bold text-xs text-white">
+                            <Coins className="w-4 h-4 text-blue-400" />
+                            <span>0.005 ETH Standard</span>
+                          </div>
+                          <span className="block text-[10px] text-zinc-500 font-mono mt-0.5">
+                            Standard Base gas & contract deployment fee
+                          </span>
+                        </div>
+                        {deployPaymentMethod === "eth" && <Check className="w-4 h-4 text-blue-400 shrink-0" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      id="btn-goto-prompt-preview"
+                      onClick={() => setForgeMode("preview")}
+                      className="py-3 px-4 rounded-xl bg-zinc-950 hover:bg-zinc-900 border border-white/10 text-zinc-300 font-mono text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Eye className="w-4 h-4 text-purple-400" />
+                      <span>Preview Prompt Sandbox</span>
+                    </button>
+
+                    <button
+                      id="agent-create-submit-btn"
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 py-3 rounded-xl bg-brand-purple hover:bg-purple-600 font-semibold font-display text-xs text-white shadow-lg shadow-brand-purple/20 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <BrainCircuit className="w-4 h-4" />
+                      <span>{loading ? "Assembling cognitive layers..." : "Deploy AI Agent Worker"}</span>
+                    </button>
+                  </div>
                 </form>
-              </div>
+              ) : (
+                /* Live Prompt Preview & Interactive Sandbox */
+                <div className="space-y-4 animate-fade-in">
+                  {/* Sandbox Header Bar */}
+                  <div className="bg-zinc-950/80 p-3 rounded-xl border border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="font-bold text-white">{name || "Draft AI Agent"}</span>
+                      <span className="text-brand-purple uppercase">({symbol || "DRAFT"})</span>
+                      <span className="text-zinc-500">| Sub Fee: {subFee} ETH</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[10px]">
+                      <span className="bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded border border-purple-500/20">
+                        Model: {selectedModel}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleExportAgentSpec}
+                        className="text-zinc-400 hover:text-white flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/10 cursor-pointer"
+                      >
+                        <Download className="w-3 h-3 text-purple-400" /> Spec JSON
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Active System Directive Display */}
+                  <div className="bg-zinc-950/60 p-3 rounded-xl border border-white/5 space-y-1">
+                    <span className="text-[9px] font-mono uppercase text-zinc-500 font-bold block">
+                      Draft System Directives:
+                    </span>
+                    <p className="text-xs text-zinc-300 font-sans italic line-clamp-2">
+                      "{systemPrompt || "No custom instructions defined yet. Using standard Web3 AI behavior."}"
+                    </p>
+                  </div>
+
+                  {/* Sandbox Quick Test Prompts */}
+                  <div className="space-y-1.5">
+                    <span className="text-[9px] font-mono uppercase text-zinc-500 font-bold block">
+                      Quick Test Queries:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        "Audit this contract snippet for reentrancy bugs",
+                        "How can I maximize my yield on Base DEX pools?",
+                        "Draft a governance proposal for a 5 ETH treasury grant",
+                        "Explain impermanent loss risk in volatile pairs"
+                      ].map((q, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={(e) => handleRunPreviewPrompt(e, q)}
+                          disabled={previewLoading}
+                          className="text-[10px] px-2.5 py-1 rounded-lg bg-zinc-950 border border-white/10 hover:border-brand-purple/40 hover:bg-brand-purple/10 text-zinc-400 hover:text-white transition-all font-mono cursor-pointer"
+                        >
+                          ⚡ "{q}"
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sandbox Message Stream */}
+                  <div className="bg-zinc-950 border border-white/10 rounded-xl p-4 min-h-[220px] max-h-[320px] overflow-y-auto space-y-3 font-sans text-xs">
+                    {previewMessages.length === 0 ? (
+                      <div className="text-center py-12 text-zinc-600 font-mono">
+                        <Eye className="w-6 h-6 text-zinc-700 mx-auto mb-2 animate-bounce" />
+                        <p>Interactive Prompt Sandbox Ready.</p>
+                        <p className="text-[10px] text-zinc-500 mt-1">Submit a sample prompt below to simulate real-time AI responses before deploying.</p>
+                      </div>
+                    ) : (
+                      previewMessages.map((msg, i) => (
+                        <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                          <div className={`max-w-[85%] rounded-xl p-3 text-xs ${
+                            msg.role === "user"
+                              ? "bg-brand-purple text-white rounded-br-none font-mono"
+                              : "bg-zinc-900 border border-white/10 text-zinc-200 rounded-bl-none leading-relaxed"
+                          }`}>
+                            <span className="block text-[8px] font-mono text-zinc-400 uppercase mb-1">
+                              {msg.role === "user" ? "You (Tester)" : `${name || "Draft Agent"} Output`}
+                            </span>
+                            <div className="whitespace-pre-wrap">{msg.content}</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+
+                    {previewLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-zinc-900 border border-white/10 rounded-xl p-3 text-xs text-zinc-400 flex items-center gap-2 font-mono">
+                          <Loader2 className="w-3.5 h-3.5 text-brand-purple animate-spin" />
+                          <span>Evaluating directives & generating response...</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Metrics Bar */}
+                  {previewMetrics && (
+                    <div className="bg-zinc-950/60 p-2.5 rounded-xl border border-white/5 flex flex-wrap items-center justify-between text-[10px] font-mono text-zinc-400 gap-2">
+                      <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                        <Check className="w-3 h-3" /> Directives Evaluated
+                      </span>
+                      <span>⚡ {previewMetrics.tokensProcessed} tokens</span>
+                      <span>⏱️ {previewMetrics.latencyMs}ms latency</span>
+                      <span className="text-purple-300">Est. Fee: {subFee} ETH</span>
+                    </div>
+                  )}
+
+                  {/* Sandbox Input Form */}
+                  <form onSubmit={(e) => handleRunPreviewPrompt(e)} className="flex items-center gap-2">
+                    <input
+                      id="preview-prompt-message-input"
+                      type="text"
+                      value={previewInput}
+                      onChange={(e) => setPreviewInput(e.target.value)}
+                      placeholder="Type a test query to verify system directives..."
+                      disabled={previewLoading}
+                      className="bg-zinc-950 flex-1 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-brand-purple/40"
+                    />
+                    <button
+                      id="btn-send-preview-prompt"
+                      type="submit"
+                      disabled={previewLoading || !previewInput.trim()}
+                      className="px-4 py-2.5 bg-brand-purple hover:bg-purple-600 disabled:bg-zinc-800 text-white rounded-xl text-xs font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Test Prompt</span>
+                    </button>
+                  </form>
+
+                  {/* Footer Actions */}
+                  <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewMessages([])}
+                      className="text-[10px] font-mono text-zinc-500 hover:text-zinc-300 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" /> Reset Sandbox
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setForgeMode("configure")}
+                        className="px-3 py-1.5 text-xs font-mono text-zinc-400 hover:text-white bg-zinc-950 rounded-lg border border-white/10 cursor-pointer"
+                      >
+                        Edit Directives
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleCreateAgent}
+                        disabled={loading}
+                        className="px-4 py-1.5 text-xs font-mono font-bold text-white bg-brand-purple hover:bg-purple-600 rounded-lg shadow-lg shadow-brand-purple/20 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <BrainCircuit className="w-3.5 h-3.5" />
+                        <span>Deploy Agent Now</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Advanced Chat Panel Box */}
               {activeChatAgent && (
@@ -686,9 +1208,9 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                     <div className="flex flex-wrap items-center gap-1.5 bg-zinc-900/40 p-1 rounded-xl border border-white/5">
                       <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-mono font-bold px-1.5">Model:</span>
                       <button
-                        onClick={() => { setSelectedModel("gemini-3.5-flash"); setHighThinking(false); }}
+                        onClick={() => { setSelectedModel("gemini-3.6-flash"); setHighThinking(false); }}
                         className={`px-2 py-1 rounded-md text-[10px] font-mono font-semibold transition-all ${
-                          selectedModel === "gemini-3.5-flash"
+                          selectedModel === "gemini-3.6-flash"
                             ? "bg-zinc-800 text-white border border-white/10"
                             : "text-zinc-500 hover:text-white"
                         }`}
@@ -1218,6 +1740,105 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* AGL Credits Top-Up & Token Liquidity Modal */}
+      {isLiquidityModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="glass-panel w-full max-w-lg p-6 rounded-2xl border border-brand-purple/40 bg-zinc-950 space-y-6 shadow-2xl relative">
+            <button
+              id="close-liquidity-modal-btn"
+              onClick={() => setIsLiquidityModalOpen(false)}
+              className="absolute top-4 right-4 text-zinc-500 hover:text-white cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+              <div className="p-3 bg-brand-purple/20 border border-brand-purple/40 rounded-xl text-brand-purple">
+                <Flame className="w-6 h-6 animate-pulse text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold font-display text-white">AGLCredits Liquidity Top-Up</h3>
+                <p className="text-xs text-zinc-400 font-sans">
+                  Burn AGL Tokens to mint Credits and permanently seed protocol liquidity on Base.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-2 font-mono text-xs">
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Connected Wallet:</span>
+                  <span className="text-white font-bold">{wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Current AGL Balance:</span>
+                  <span className="text-purple-300 font-bold">{(wallet.aglTokenBalance || 0).toLocaleString()} AGL</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Current Credits:</span>
+                  <span className="text-emerald-400 font-bold">{(wallet.aglCredits || 0).toLocaleString()} Credits</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Protocol LP Backing:</span>
+                  <span className="text-amber-400 font-bold">{(wallet.aglLiquidityStaked || 0).toFixed(3)} ETH</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-bold tracking-wider text-zinc-400 font-mono mb-1">
+                  Amount of AGL Tokens to Burn & Convert
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={liquidityAmount}
+                    onChange={(e) => setLiquidityAmount(e.target.value)}
+                    placeholder="1000"
+                    min="100"
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-brand-purple/40 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setLiquidityAmount(String(wallet.aglTokenBalance || 1000))}
+                    className="absolute right-3 top-2.5 text-[10px] bg-brand-purple/20 text-brand-purple px-2 py-1 rounded font-mono font-bold hover:bg-brand-purple hover:text-white transition-all"
+                  >
+                    MAX
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-purple-950/30 border border-purple-500/20 p-3 rounded-xl font-mono text-[10px] text-purple-200 space-y-1">
+                <span className="font-bold uppercase text-purple-300 flex items-center gap-1">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" /> Output Summary:
+                </span>
+                <p>• Mint +{((parseFloat(liquidityAmount) || 0) * 2).toLocaleString()} AGL Credits to wallet</p>
+                <p>• Permanently burn {liquidityAmount || 0} $AGL supply</p>
+                <p>• Inject +{((parseFloat(liquidityAmount) || 0) * 0.00005).toFixed(4)} ETH into $AGL Bonding Pool</p>
+              </div>
+
+              <button
+                id="btn-confirm-liquidity-topup"
+                onClick={handleGenerateLiquidity}
+                disabled={liquidityProcessing}
+                className="w-full py-3 rounded-xl bg-brand-purple hover:bg-purple-600 font-semibold font-mono text-xs text-white shadow-lg shadow-brand-purple/20 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {liquidityProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Executing Base contract liquidity boost...</span>
+                  </>
+                ) : (
+                  <>
+                    <Flame className="w-4 h-4 text-amber-300" />
+                    <span>Confirm Token Burn & Liquidity Injection</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

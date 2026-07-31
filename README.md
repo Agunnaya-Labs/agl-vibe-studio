@@ -3,7 +3,7 @@
 <div align="left" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;">
   <img src="https://img.shields.io/badge/Ecosystem-Base_Mainnet-0052FF?style=for-the-badge&logo=base&logoColor=white" alt="Base Ecosystem" />
   <img src="https://img.shields.io/badge/Status-Production_Ready-22C55E?style=for-the-badge&logo=statuspage&logoColor=white" alt="Production Ready" />
-  <img src="https://img.shields.io/badge/AI_Engine-Gemini_3.5_Flash-A855F7?style=for-the-badge&logo=google-gemini&logoColor=white" alt="Gemini Engine" />
+  <img src="https://img.shields.io/badge/AI_Engine-Gemini_3.6_Flash-A855F7?style=for-the-badge&logo=google-gemini&logoColor=white" alt="Gemini Engine" />
   <img src="https://img.shields.io/badge/Contract_ABI-Standard_ERC20-3178C6?style=for-the-badge&logo=ethereum&logoColor=white" alt="Standard ERC20 ABI" />
   <img src="https://img.shields.io/badge/Database-Firebase_Firestore-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase Firestore" />
   <img src="https://img.shields.io/badge/Referrals-Earn_20%25_AGL-A855F7?style=for-the-badge&logo=gift&logoColor=white" alt="Referrals Active" />
@@ -49,9 +49,13 @@ Agunnaya Labs Studio features a tailored **Immersive UI** design system built fo
 *   **Multimodal AI Engine**: Direct integration with Gemini LLM, speech-to-text audio transcription, AI image generation, and video synthesis.
 *   **Prompt Optimization Pipeline**: 1-click AI directive tuner that transforms simple descriptions into detailed autonomous cognitive instructions.
 
-### 3. 💬 Categorized AI Web3 Advisor Drawer
-*   **Floating AI Drawer**: Accessible from anywhere in the applet via the floating action button or shortcut tooltips.
-*   **Categorized Prompt Suggestions**: Instant 1-click queries grouped into **Tokens & Curve**, **AI Agents**, and **DeFi & DAOs**.
+### 3. 💬 Categorized AI Web3 Advisor Drawer & Floating Developer Dock
+*   **Floating AI Drawer**: Accessible from anywhere in the applet via the floating action button (`#floating-ai-activator`) or shortcut tooltips.
+*   **Developer Quick Actions Menu**: Performing a right-click on `#floating-ai-activator` opens a sleek contextual menu for 1-click access to **Deploy Contract**, **View Analytics**, **Open Terminal**, and **AI Prompt Advisor**.
+*   **Quick Copy Wallet Address**: 1-click clipboard button built directly into the floating dock with toast notifications and visual checkmark confirmations.
+*   **Mobile Wallet QR Code Popover**: Clickable QR code button triggering a popover window displaying the active wallet's address as a QR code for mobile scanning, complete with wallet type tag (AA Smart / Base Mainnet EOA) and 1-click string copy.
+*   **Interactive System Terminal Modal**: Access the full-featured Web3 CLI, RPC event streaming logs, custom themes (Classic Green, Amber, Monochrome), and command history via Quick Actions.
+*   **Categorized Prompt Suggestions**: Instant 1-click queries powered by Gemini 3.6 Flash grouped into **Tokens & Curve**, **AI Agents**, and **DeFi & DAOs**.
 *   **AGL Credit Metering**: Each AI query consumes 5 AGL Credits, fully backed on-chain or in the Sepolia Sandbox by burning AGL tokens.
 
 ### 4. 🎁 20% Referral & Affiliate Engine

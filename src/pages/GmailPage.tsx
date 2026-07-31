@@ -215,7 +215,7 @@ export default function GmailPage({
     }
 
     setIsDrafting(true);
-    addTerminalLog("info", `GEMINI_API: Contacting server to draft email utilizing model [gemini-3.5-flash]...`);
+    addTerminalLog("info", `GEMINI_API: Contacting server to draft email utilizing model [gemini-3.6-flash]...`);
 
     const selectedAgent = activeAgents.find(a => a.id === selectedAgentId);
 

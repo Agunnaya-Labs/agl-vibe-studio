@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { HelmetProvider, Helmet } from "react-helmet-async";
 import { User, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
@@ -32,8 +32,8 @@ import TokenFactoryPage from "./pages/TokenFactoryPage";
 // Database & Utilities
 import { AgunnayaDatabase } from "./lib/db";
 import { WalletState, Token, NFTCollection, DAO, GameFiProject, AIAgent, Activity, PriceAlert } from "./types";
-import { TerminalLine } from "./components/TerminalLog";
-import { BrainCircuit } from "lucide-react";
+import TerminalLog, { TerminalLine } from "./components/TerminalLog";
+import { BrainCircuit, Copy, Check, QrCode, X, ShieldCheck, Rocket, BarChart3, Terminal, Zap, ChevronRight, Pin, PinOff } from "lucide-react";
 
 export default function App() {
   const [isLaunched, setIsLaunched] = useState(false);
@@ -68,6 +68,22 @@ export default function App() {
     setToast({ message, type });
   };
 
+  const [copiedAddress, setCopiedAddress] = useState(false);
+  const [isQRPopoverOpen, setIsQRPopoverOpen] = useState(false);
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
+  const [isTerminalModalOpen, setIsTerminalModalOpen] = useState(false);
+  const [isDrawerLocked, setIsDrawerLocked] = useState(false);
+
+  const handleCopyAddress = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (wallet.address) {
+      navigator.clipboard.writeText(wallet.address);
+      setCopiedAddress(true);
+      showToast(`Wallet address copied: ${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`, "success");
+      setTimeout(() => setCopiedAddress(false), 2000);
+    }
+  };
+
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => {
@@ -77,9 +93,9 @@ export default function App() {
     }
   }, [toast]);
 
-  // Global click-outside listener to close AI Drawer when clicking outside floating activator, tooltip, or drawer
+  // Global click-outside listener to close AI Drawer when clicking outside floating activator, tooltip, or drawer (unless pinned/locked)
   useEffect(() => {
-    if (!isAIDrawerOpen) return;
+    if (!isAIDrawerOpen || isDrawerLocked) return;
 
     const handleOutsideClick = (event: MouseEvent) => {
       const target = event.target as Node | null;
@@ -106,7 +122,38 @@ export default function App() {
       clearTimeout(timer);
       document.removeEventListener("click", handleOutsideClick);
     };
-  }, [isAIDrawerOpen]);
+  }, [isAIDrawerOpen, isDrawerLocked]);
+
+  // Global click-outside listener for Quick Actions menu
+  useEffect(() => {
+    if (!isQuickActionsOpen) return;
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+
+      const activator = document.getElementById("floating-ai-activator");
+      const quickActions = document.getElementById("floating-quick-actions");
+
+      const isInsideActivator = activator && activator.contains(target);
+      const isInsideQuickActions = quickActions && quickActions.contains(target);
+
+      if (!isInsideActivator && !isInsideQuickActions) {
+        setIsQuickActionsOpen(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      document.addEventListener("click", handleOutsideClick);
+      document.addEventListener("contextmenu", handleOutsideClick);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("click", handleOutsideClick);
+      document.removeEventListener("contextmenu", handleOutsideClick);
+    };
+  }, [isQuickActionsOpen]);
 
   // Terminal Logs state
   const [terminalLogs, setTerminalLogs] = useState<TerminalLine[]>([
@@ -951,16 +998,296 @@ export default function App() {
             <span>Prompt Assistant</span>
           </div>
 
-          <button
+          <div
             id="floating-ai-activator"
-            onClick={() => setIsAIDrawerOpen(true)}
-            className="p-4 rounded-full bg-brand-purple hover:bg-purple-600 text-white shadow-xl shadow-brand-purple/30 hover:shadow-2xl hover:shadow-brand-purple/70 hover:scale-110 active:scale-95 transition-all duration-300 flex items-center gap-2 group border border-white/10 pointer-events-auto"
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setIsQuickActionsOpen((prev) => !prev);
+            }}
+            className="p-1.5 rounded-full bg-brand-purple/95 hover:bg-brand-purple text-white shadow-xl shadow-brand-purple/30 hover:shadow-2xl hover:shadow-brand-purple/70 transition-all duration-300 flex items-center gap-1.5 border border-white/20 pointer-events-auto relative cursor-pointer"
+            title="Click for chat / copy / QR code • Right-click for Quick Developer Actions"
           >
-            <BrainCircuit className="w-5 h-5 animate-pulse" />
-            <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 text-xs font-semibold font-display">
-              Prompt Advisor
-            </span>
-          </button>
+            {/* Right-Click Quick Actions Developer Menu */}
+            {isQuickActionsOpen && (
+              <div
+                id="floating-quick-actions"
+                className="absolute bottom-full right-0 mb-3 w-72 p-2 bg-zinc-950/95 border border-purple-500/30 rounded-2xl shadow-2xl z-50 text-white font-sans backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-150 overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Menu Header */}
+                <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 mb-1">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-purple-400" />
+                    <span className="text-xs font-bold font-display tracking-wide text-white">Quick Actions</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickActionsOpen(false)}
+                    className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="space-y-1">
+                  {/* Deploy Contract */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedToken(null);
+                      setCurrentTab("create");
+                      setIsQuickActionsOpen(false);
+                      showToast("Navigated to Token & Contract Deployment Studio", "info");
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-purple-500/15 hover:border-purple-500/30 border border-transparent text-left transition-all group/item"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-300 group-hover/item:text-purple-200 group-hover/item:scale-110 transition-all">
+                        <Rocket className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-white group-hover/item:text-purple-300 transition-colors">Deploy Contract</div>
+                        <div className="text-[10px] text-zinc-400">Launch ERC-20, NFT or Bonding Curve</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-zinc-600 group-hover/item:text-white transition-colors" />
+                  </button>
+
+                  {/* View Analytics */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedToken(null);
+                      setCurrentTab("analytics");
+                      setIsQuickActionsOpen(false);
+                      showToast("Opened Network & Bonding Curve Analytics", "info");
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-purple-500/15 hover:border-purple-500/30 border border-transparent text-left transition-all group/item"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-300 group-hover/item:text-blue-200 group-hover/item:scale-110 transition-all">
+                        <BarChart3 className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-white group-hover/item:text-blue-300 transition-colors">View Analytics</div>
+                        <div className="text-[10px] text-zinc-400 font-sans">Live metrics & bonding curve charts</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-zinc-600 group-hover/item:text-white transition-colors" />
+                  </button>
+
+                  {/* Open Terminal */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsTerminalModalOpen(true);
+                      setIsQuickActionsOpen(false);
+                      addTerminalLog("system", "DEVELOPER_TERMINAL: Opened interactive developer CLI console session.");
+                      showToast("Developer Terminal Opened", "info");
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-purple-500/15 hover:border-purple-500/30 border border-transparent text-left transition-all group/item"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 group-hover/item:text-emerald-200 group-hover/item:scale-110 transition-all">
+                        <Terminal className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-white group-hover/item:text-emerald-300 transition-colors">Open Terminal</div>
+                        <div className="text-[10px] text-zinc-400 font-sans">Interactive CLI & event logs</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-zinc-600 group-hover/item:text-white transition-colors" />
+                  </button>
+
+                  {/* AI Prompt Advisor */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAIDrawerOpen(true);
+                      setIsQuickActionsOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-purple-500/15 hover:border-purple-500/30 border border-transparent text-left transition-all group/item"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 group-hover/item:text-amber-200 group-hover/item:scale-110 transition-all">
+                        <BrainCircuit className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-white group-hover/item:text-amber-300 transition-colors">AI Prompt Advisor</div>
+                        <div className="text-[10px] text-zinc-400 font-sans">Multimodal Web3 AI Chat Studio</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-zinc-600 group-hover/item:text-white transition-colors" />
+                  </button>
+
+                  {/* Lock Drawer Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextState = !isDrawerLocked;
+                      setIsDrawerLocked(nextState);
+                      if (nextState) {
+                        setIsAIDrawerOpen(true);
+                        showToast("AI Assistant drawer locked & pinned open", "info");
+                      } else {
+                        showToast("AI Assistant drawer unlocked (auto-close active)", "info");
+                      }
+                      setIsQuickActionsOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all group/item ${
+                      isDrawerLocked
+                        ? "bg-purple-500/20 border-purple-500/40"
+                        : "hover:bg-purple-500/15 hover:border-purple-500/30 border-transparent"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className={`p-1.5 rounded-lg transition-all ${
+                        isDrawerLocked
+                          ? "bg-purple-500 text-white"
+                          : "bg-purple-500/20 text-purple-300 group-hover/item:text-purple-200 group-hover/item:scale-110"
+                      }`}>
+                        {isDrawerLocked ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-white group-hover/item:text-purple-300 transition-colors">
+                          {isDrawerLocked ? "Unlock AI Drawer" : "Lock AI Drawer"}
+                        </div>
+                        <div className="text-[10px] text-zinc-400 font-sans">
+                          {isDrawerLocked ? "Allow drawer to auto-close" : "Pin drawer open on screen"}
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`w-8 h-4 rounded-full p-0.5 transition-colors flex items-center ${
+                      isDrawerLocked ? "bg-purple-500 justify-end" : "bg-purple-950/60 justify-start"
+                    }`}>
+                      <div className="w-3 h-3 rounded-full bg-white shadow-md" />
+                    </div>
+                  </button>
+                </div>
+
+                <div className="px-3 py-1.5 mt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-zinc-500 font-mono">
+                  <span>Right-click menu</span>
+                  <span className="text-purple-400 font-bold">Base Mainnet</span>
+                </div>
+              </div>
+            )}
+
+            {/* Wallet QR Code Popover */}
+            {isQRPopoverOpen && wallet.address && (
+              <div 
+                className="absolute bottom-full right-0 mb-3 w-72 p-4 bg-zinc-950 border border-white/20 rounded-2xl shadow-2xl z-50 text-white font-mono animate-in fade-in slide-in-from-bottom-2 duration-200"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Popover Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                  <div className="flex items-center gap-1.5">
+                    <QrCode className="w-4 h-4 text-brand-purple" />
+                    <span className="text-xs font-bold font-display text-white">Wallet Address QR</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsQRPopoverOpen(false)}
+                    className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* QR Code Container */}
+                <div className="my-3 flex flex-col items-center justify-center p-3 rounded-xl bg-zinc-900 border border-white/10">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(wallet.address)}&color=ffffff&bgcolor=18181b&margin=6`}
+                    alt="Wallet Address QR Code"
+                    className="w-40 h-40 rounded-lg shadow-inner object-contain"
+                  />
+                  <span className="mt-2 text-[10px] text-zinc-400 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                    {wallet.walletType === "smart" ? "AA Smart Account" : "Base Mainnet EOA"}
+                  </span>
+                </div>
+
+                {/* Address & Copy CTA */}
+                <div className="space-y-2">
+                  <div className="p-2 rounded-lg bg-zinc-900 border border-white/5 text-[10px] text-zinc-300 break-all text-center select-all">
+                    {wallet.address}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyAddress}
+                    className="w-full py-2 px-3 rounded-xl bg-brand-purple hover:bg-purple-600 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-purple/20 active:scale-98"
+                  >
+                    {copiedAddress ? (
+                      <>
+                        <Check className="w-4 h-4 text-emerald-400" />
+                        <span>Address Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        <span>Copy Address String</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Copy Address Button */}
+            {wallet.address && (
+              <button
+                type="button"
+                onClick={handleCopyAddress}
+                className="px-3 py-1.5 rounded-full bg-zinc-950/80 hover:bg-zinc-950 text-white text-xs font-mono font-semibold flex items-center gap-1.5 transition-all border border-white/10 active:scale-95 group/copy"
+                title={`Copy wallet address (${wallet.address})`}
+              >
+                {copiedAddress ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-[11px] text-emerald-400 font-bold">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-purple-200 group-hover/copy:text-white transition-colors" />
+                    <span className="text-[11px] font-bold tracking-tight">
+                      {wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}
+                    </span>
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* QR Code Icon Button */}
+            {wallet.address && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsQRPopoverOpen((prev) => !prev);
+                }}
+                className={`p-2 rounded-full text-white transition-all border border-white/10 active:scale-95 ${
+                  isQRPopoverOpen
+                    ? "bg-white text-brand-purple shadow-md scale-105"
+                    : "bg-zinc-950/80 hover:bg-zinc-950 text-purple-200 hover:text-white"
+                }`}
+                title="Scan QR Code of wallet address"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {/* Prompt Advisor Drawer Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsAIDrawerOpen(true)}
+              className="p-2.5 rounded-full hover:bg-white/10 text-white flex items-center gap-2 group/ai transition-all"
+              title="Open AI Studio Prompt Assistant"
+            >
+              <BrainCircuit className="w-5 h-5 animate-pulse text-purple-200 group-hover/ai:text-white" />
+              <span className="text-xs font-semibold font-display hidden sm:inline-block">
+                Prompt Advisor
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Drawer Panel */}
@@ -970,7 +1297,42 @@ export default function App() {
           wallet={wallet}
           onRefreshWallet={refreshAllData}
           showToast={showToast}
+          isLocked={isDrawerLocked}
+          onToggleLock={() => {
+            const next = !isDrawerLocked;
+            setIsDrawerLocked(next);
+            if (next) setIsAIDrawerOpen(true);
+            showToast(next ? "AI Assistant drawer locked & pinned open" : "AI Assistant drawer unlocked", "info");
+          }}
         />
+
+        {/* Developer Terminal Console Modal Overlay */}
+        {isTerminalModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+            <div className="relative w-full max-w-4xl h-[78vh] bg-zinc-950 border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between px-6 py-3.5 border-b border-white/10 bg-zinc-900/80">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400">
+                    <Terminal className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold font-mono text-white">Developer System Terminal</h3>
+                    <p className="text-[11px] text-zinc-400 font-mono">Real-time RPC event stream & interactive Web3 CLI</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsTerminalModalOpen(false)}
+                  className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden p-2">
+                <TerminalLog logs={terminalLogs} onClear={() => setTerminalLogs([])} />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Wallet Connection Modal overlay */}
         <WalletModal
