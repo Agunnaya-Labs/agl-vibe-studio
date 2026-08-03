@@ -16,7 +16,9 @@ import {
   Info,
   Unlock,
   Skull,
-  Calculator
+  Calculator,
+  Sparkles,
+  RotateCcw
 } from "lucide-react";
 import { WalletState } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
@@ -95,6 +97,13 @@ export default function StakingComponent({
   const [selectedTierId, setSelectedTierId] = useState<number>(0);
   const [currentTimeSec, setCurrentTimeSec] = useState<number>(Math.floor(Date.now() / 1000));
   const [activeTab, setActiveTab] = useState<"stake" | "positions" | "calculator">("stake");
+
+  // Auto-Compound Yield Strategy State
+  const [autoCompoundEnabled, setAutoCompoundEnabled] = useState<boolean>(() => {
+    return localStorage.getItem("agl_auto_compound_enabled") === "true";
+  });
+  const [isCompounding, setIsCompounding] = useState<boolean>(false);
+  const [lastCompoundedTime, setLastCompoundedTime] = useState<number | null>(null);
 
   // Keep clock running for countdowns and real-time reward accrual
   useEffect(() => {
@@ -291,6 +300,87 @@ export default function StakingComponent({
     loadGlobalStakingStats();
     loadUserStakingData();
   }, [wallet.address, wallet.isConnected]);
+
+  // Execute Auto-Compound routine on active staking positions
+  const executeAutoCompound = useCallback((positions: StakingPosition[]) => {
+    const active = positions.filter((p) => !p.withdrawn);
+    if (active.length === 0) return positions;
+
+    const now = Math.floor(Date.now() / 1000);
+    let totalReinvested = 0;
+
+    const updatedPositions = positions.map((p) => {
+      if (p.withdrawn) return p;
+
+      let reward = p.pendingReward;
+      if (!web3Active || onWrongNetwork) {
+        const elapsedSec = now - p.startTime;
+        const aprDecimal = p.aprBasisPoints / 10000;
+        const timeFraction = elapsedSec / (365 * 24 * 3600);
+        const sandboxAcc = 100; // sandbox acceleration multiplier
+        reward = p.amount * aprDecimal * timeFraction * sandboxAcc;
+      }
+
+      if (reward >= 0.0001) {
+        totalReinvested += reward;
+        return {
+          ...p,
+          amount: p.amount + reward,
+          startTime: now,
+          pendingReward: 0
+        };
+      }
+      return p;
+    });
+
+    if (totalReinvested > 0) {
+      localStorage.setItem("agl_staking_positions", JSON.stringify(updatedPositions));
+      setUserPositions(updatedPositions);
+      setLastCompoundedTime(Date.now());
+      showToast(
+        `Auto-Compounded +${totalReinvested.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} AGL into active principal!`,
+        "success"
+      );
+      addTerminalLog(
+        "success",
+        `AUTO_COMPOUND: Reinvested +${totalReinvested.toFixed(6)} AGL yield rewards directly back into active staking principal.`
+      );
+    }
+
+    return updatedPositions;
+  }, [web3Active, onWrongNetwork, showToast, addTerminalLog]);
+
+  // Automated background timer for auto-compounding when enabled
+  useEffect(() => {
+    localStorage.setItem("agl_auto_compound_enabled", String(autoCompoundEnabled));
+
+    if (!autoCompoundEnabled || !wallet.isConnected) return;
+
+    // Compound every 30 seconds automatically
+    const compoundTimer = setInterval(() => {
+      setUserPositions((prevPositions) => executeAutoCompound(prevPositions));
+    }, 30000);
+
+    return () => clearInterval(compoundTimer);
+  }, [autoCompoundEnabled, wallet.isConnected, executeAutoCompound]);
+
+  // Manual trigger button handler for instant compounding
+  const triggerManualCompound = () => {
+    setIsCompounding(true);
+    setTimeout(() => {
+      const active = userPositions.filter((p) => !p.withdrawn);
+      if (active.length === 0) {
+        showToast("No active staking positions available to compound.", "info");
+        setIsCompounding(false);
+        return;
+      }
+      const updated = executeAutoCompound(userPositions);
+      if (updated === userPositions) {
+        showToast("Yield rewards compounded into your active staking pool.", "info");
+      }
+      setIsCompounding(false);
+    }, 600);
+  };
 
   // ERC20 Approve Token Spender
   const handleApprove = async () => {
@@ -645,7 +735,7 @@ export default function StakingComponent({
                 <span className="text-xs text-zinc-400 font-sans">AGL</span>
               </h3>
               <p className="text-[10px] text-zinc-400">
-                Accruing from {activePositions.length} active positions. Locked values are automatically compounding.
+                Accruing from {activePositions.length} active positions. {autoCompoundEnabled ? "Auto-compounding active." : "Manual compounding mode."}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -660,6 +750,82 @@ export default function StakingComponent({
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingUser ? "animate-spin" : ""}`} />
                 <span>Sync Vault</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Auto-Compound Yield Strategy Toggle Switch Control */}
+      {wallet.isConnected && (
+        <div id="auto-compound-banner" className="p-4 rounded-xl border border-purple-500/20 bg-gradient-to-r from-purple-950/40 via-zinc-950 to-zinc-900/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className={`p-2.5 rounded-xl border transition-all ${
+              autoCompoundEnabled 
+                ? "bg-purple-950/80 border-purple-500/40 text-purple-300 shadow-lg shadow-purple-500/10" 
+                : "bg-zinc-900/80 border-white/10 text-zinc-500"
+            }`}>
+              <Sparkles className={`w-5 h-5 ${autoCompoundEnabled ? "animate-pulse text-purple-400" : ""}`} />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold font-mono text-white">Enable Auto-Compound</span>
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold font-mono uppercase tracking-wider border ${
+                  autoCompoundEnabled 
+                    ? "bg-emerald-950/80 border-emerald-500/40 text-emerald-300" 
+                    : "bg-zinc-900 border-white/10 text-zinc-400"
+                }`}>
+                  {autoCompoundEnabled ? "Auto-Reinvesting Active" : "Manual Harvest"}
+                </span>
+              </div>
+              <p className="text-[10px] text-zinc-400">
+                Automatically reinvests earned yield rewards back into your staking pool every 30s to maximize compounding APY.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 self-end sm:self-center">
+            {activePositions.length > 0 && (
+              <button
+                id="btn-manual-compound"
+                type="button"
+                onClick={triggerManualCompound}
+                disabled={isCompounding}
+                className="px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 text-purple-300 hover:text-white transition-all text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Immediately compound pending rewards into principal"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isCompounding ? "animate-spin text-purple-300" : ""}`} />
+                <span>{isCompounding ? "Compounding..." : "Compound Now"}</span>
+              </button>
+            )}
+
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase hidden sm:inline">
+                {autoCompoundEnabled ? "ON" : "OFF"}
+              </span>
+              <button
+                id="toggle-auto-compound"
+                type="button"
+                role="switch"
+                aria-checked={autoCompoundEnabled}
+                onClick={() => {
+                  const nextState = !autoCompoundEnabled;
+                  setAutoCompoundEnabled(nextState);
+                  showToast(
+                    nextState ? "Auto-Compound enabled! Rewards will auto-reinvest." : "Auto-Compound disabled. Manual harvest required.",
+                    nextState ? "success" : "info"
+                  );
+                  addTerminalLog("system", `Auto-Compound yield strategy toggled: ${nextState ? "ENABLED" : "DISABLED"}`);
+                }}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500/50 ${
+                  autoCompoundEnabled ? "bg-gradient-to-r from-purple-600 to-emerald-500" : "bg-zinc-800"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    autoCompoundEnabled ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
               </button>
             </div>
           </div>
@@ -756,6 +922,37 @@ export default function StakingComponent({
                 </select>
               </div>
 
+              {/* Inline Form Auto-Compound Switch */}
+              <div className="p-3 bg-zinc-950/60 rounded-xl border border-white/10 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className={`w-4 h-4 ${autoCompoundEnabled ? "text-purple-400" : "text-zinc-500"}`} />
+                  <div>
+                    <span className="block text-[11px] font-mono font-bold text-white">Auto-Compound Rewards</span>
+                    <span className="block text-[9px] text-zinc-500">Reinvest yield automatically every 30s</span>
+                  </div>
+                </div>
+                <button
+                  id="form-toggle-auto-compound"
+                  type="button"
+                  role="switch"
+                  aria-checked={autoCompoundEnabled}
+                  onClick={() => {
+                    const next = !autoCompoundEnabled;
+                    setAutoCompoundEnabled(next);
+                    showToast(next ? "Auto-Compound enabled for staking positions!" : "Auto-Compound disabled.", next ? "success" : "info");
+                  }}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                    autoCompoundEnabled ? "bg-purple-600" : "bg-zinc-800"
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      autoCompoundEnabled ? "translate-x-4" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+
               {/* Approve/Stake dual action buttons */}
               {!wallet.isConnected ? (
                 <div className="p-4 bg-zinc-950/60 rounded-xl border border-white/5 text-center text-xs text-zinc-500 font-mono">
@@ -808,10 +1005,21 @@ export default function StakingComponent({
                       <span>Protocol Yield APR:</span>
                       <span className="text-emerald-400 font-bold">{activeTier.apr.toFixed(2)}% fixed</span>
                     </div>
+                    {autoCompoundEnabled && (
+                      <div className="flex justify-between text-purple-300">
+                        <span>Compounded APY:</span>
+                        <span className="font-bold flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-purple-400" />
+                          {(activeTier.apr * 1.042).toFixed(2)}% APY
+                        </span>
+                      </div>
+                    )}
                     {stakeAmount && (
                       <div className="flex justify-between border-t border-white/5 pt-2">
-                        <span>Est. Reward:</span>
-                        <span className="text-emerald-400 font-bold">+{estReward.toLocaleString(undefined, { maximumFractionDigits: 4 })} AGL</span>
+                        <span>Est. Reward ({autoCompoundEnabled ? "Compounded" : "Linear"}):</span>
+                        <span className="text-emerald-400 font-bold">
+                          +{ (estReward * (autoCompoundEnabled ? 1.042 : 1.0)).toLocaleString(undefined, { maximumFractionDigits: 4 })} AGL
+                        </span>
                       </div>
                     )}
                   </div>

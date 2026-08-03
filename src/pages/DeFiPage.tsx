@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import { WalletState } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
 import StakingComponent from "../components/StakingComponent";
+import AirdropSweepTracker from "../components/AirdropSweepTracker";
 import { 
   ArrowLeftRight, 
   Landmark, 
@@ -17,7 +18,8 @@ import {
   CheckCircle,
   Clock,
   ExternalLink,
-  ShieldAlert
+  ShieldAlert,
+  Zap
 } from "lucide-react";
 
 interface DeFiPageProps {
@@ -91,6 +93,7 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
   const [stakingLoading, setStakingLoading] = useState(false);
   const [selectedTierId, setSelectedTierId] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<"stake" | "positions">("stake");
+  const [defiHubTab, setDefiHubTab] = useState<"airdrop-sweep" | "swaps-staking">("airdrop-sweep");
   const [currentTimeSec, setCurrentTimeSec] = useState<number>(Math.floor(Date.now() / 1000));
 
   // Web3 Status
@@ -616,113 +619,167 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
 
 
   return (
-    <div id="defi-suite-root" className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
-      
-      {/* COLUMN 1: SWAPS */}
-      <div className="glass-panel p-6 rounded-2xl border border-white/5 bg-zinc-900/10 space-y-6">
-        <div>
-          <h2 className="text-sm font-bold font-display uppercase tracking-wider text-white flex items-center gap-1.5">
-            <ArrowLeftRight className="w-4 h-4 text-[#0052FF]" />
-            Decentralized Swaps
-          </h2>
-          <p className="text-[11px] text-zinc-500 mt-1">
-            Instantly route, swap, and collateralize standard Base assets using fully automated liquidity routers.
-          </p>
-        </div>
-
-        <form onSubmit={handleExecuteSwap} className="space-y-4">
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-center text-[10px] font-mono text-zinc-500">
-              <label className="uppercase font-bold">Pay From</label>
-              <span>Bal: {swapFrom === "ETH" ? wallet.balanceEth.toFixed(4) : wallet.aglTokenBalance.toLocaleString()} {swapFrom}</span>
-            </div>
-            <div className="relative">
-              <input
-                id="swap-input-amount"
-                type="number"
-                step="0.0001"
-                min="0"
-                value={swapAmount}
-                onChange={(e) => handleSwapAmountChange(e.target.value)}
-                placeholder="0.1"
-                required
-                className="w-full bg-zinc-950 border border-white/10 rounded-xl p-3 pr-16 text-xs font-mono text-white focus:outline-none"
-              />
-              <span className="absolute right-3.5 top-3.5 text-xs text-zinc-400 font-bold font-mono">
-                {swapFrom}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex justify-center">
-            <button
-              id="swap-toggle-direction"
-              type="button"
-              onClick={() => {
-                setSwapFrom(prev => prev === "ETH" ? "AGL" : "ETH");
-                setSwapTo(prev => prev === "AGL" ? "ETH" : "AGL");
-                setSwapAmount("");
-                setSwapEstim("0");
-              }}
-              className="p-2 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-[#0052FF] hover:border-[#0052FF]/30 transition-all text-xs"
-            >
-              ⇅
-            </button>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-[9px] uppercase font-bold text-zinc-500">Receive To (Estimated)</label>
-            <div className="relative">
-              <input
-                id="swap-estimated-output"
-                type="text"
-                value={swapEstim}
-                disabled
-                className="w-full bg-zinc-950 border border-white/5 rounded-xl p-3 text-xs text-zinc-500 font-mono focus:outline-none"
-              />
-              <span className="absolute right-3.5 top-3.5 text-xs text-zinc-400 font-bold font-mono">
-                {swapTo}
-              </span>
-            </div>
-          </div>
+    <div id="defi-suite-root" className="space-y-6 animate-fade-in">
+      {/* DEFI HUB SUB-NAVIGATION TABS */}
+      <div className="flex flex-wrap items-center justify-between gap-4 p-2 bg-zinc-950/80 border border-white/10 rounded-2xl">
+        <div className="flex items-center gap-2">
+          <button
+            id="tab-btn-airdrop-sweep"
+            type="button"
+            onClick={() => setDefiHubTab("airdrop-sweep")}
+            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              defiHubTab === "airdrop-sweep"
+                ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-500/20"
+                : "text-zinc-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <Landmark className="w-4 h-4 text-purple-300" />
+            <span>Airdrop Status & Treasury Sweep Tracker</span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] font-bold">
+              Base Mainnet
+            </span>
+          </button>
 
           <button
-            id="defi-swap-submit"
-            type="submit"
-            disabled={swapping || !swapAmount || parseFloat(swapAmount) <= 0}
-            className="w-full py-3 rounded-xl bg-[#0052FF] hover:bg-blue-600 text-xs font-bold font-display text-white shadow-lg shadow-blue-500/10 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all flex items-center justify-center gap-1.5"
+            id="tab-btn-swaps-staking"
+            type="button"
+            onClick={() => setDefiHubTab("swaps-staking")}
+            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              defiHubTab === "swaps-staking"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20"
+                : "text-zinc-400 hover:text-white hover:bg-white/5"
+            }`}
           >
-            <ArrowLeftRight className="w-4 h-4" />
-            <span>{swapping ? "Executing contract routing..." : "Route Liquidity swap"}</span>
+            <ArrowLeftRight className="w-4 h-4 text-blue-300" />
+            <span>AMM Swaps & Staking Vaults</span>
           </button>
-        </form>
+        </div>
 
-        <div className="p-3.5 bg-black/40 rounded-xl border border-white/5 font-mono text-[10px] text-zinc-400 space-y-2">
-          <div className="flex justify-between">
-            <span>Price Ticker:</span>
-            <span className="text-white">1 ETH = {onChainRate.toLocaleString()} AGL</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Network Fee:</span>
-            <span className="text-emerald-400">&lt; $0.01 (Base Gas Optimizer)</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Liquidity Depth:</span>
-            <span className="text-white">Constant (Automated Linear Curve)</span>
-          </div>
+        <div className="text-[11px] font-mono text-zinc-500 hidden md:flex items-center gap-2 pr-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Multisig Target: 0x5154...1e2d (3/5 Safe)</span>
         </div>
       </div>
 
-      {/* COLUMNS 2 & 3: ADVANCED CONTRACT-INTEGRATED STAKING PORTAL */}
-      <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-white/5 bg-zinc-900/10 flex flex-col justify-between">
-        <StakingComponent
+      {/* TAB CONTENT 1: AIRDROP STATUS & TREASURY SWEEP TRACKER */}
+      {defiHubTab === "airdrop-sweep" && (
+        <AirdropSweepTracker
           wallet={wallet}
           onRefreshWallet={onRefreshWallet}
           addTerminalLog={addTerminalLog}
           showToast={showToast}
         />
-      </div>
+      )}
 
+      {/* TAB CONTENT 2: AMM SWAPS & STAKING VAULTS */}
+      {defiHubTab === "swaps-staking" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* COLUMN 1: SWAPS */}
+          <div className="glass-panel p-6 rounded-2xl border border-white/5 bg-zinc-900/10 space-y-6">
+            <div>
+              <h2 className="text-sm font-bold font-display uppercase tracking-wider text-white flex items-center gap-1.5">
+                <ArrowLeftRight className="w-4 h-4 text-[#0052FF]" />
+                Decentralized Swaps
+              </h2>
+              <p className="text-[11px] text-zinc-500 mt-1">
+                Instantly route, swap, and collateralize standard Base assets using fully automated liquidity routers.
+              </p>
+            </div>
+
+            <form onSubmit={handleExecuteSwap} className="space-y-4">
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center text-[10px] font-mono text-zinc-500">
+                  <label className="uppercase font-bold">Pay From</label>
+                  <span>Bal: {swapFrom === "ETH" ? wallet.balanceEth.toFixed(4) : wallet.aglTokenBalance.toLocaleString()} {swapFrom}</span>
+                </div>
+                <div className="relative">
+                  <input
+                    id="swap-input-amount"
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    value={swapAmount}
+                    onChange={(e) => handleSwapAmountChange(e.target.value)}
+                    placeholder="0.1"
+                    required
+                    className="w-full bg-zinc-950 border border-white/10 rounded-xl p-3 pr-16 text-xs font-mono text-white focus:outline-none"
+                  />
+                  <span className="absolute right-3.5 top-3.5 text-xs text-zinc-400 font-bold font-mono">
+                    {swapFrom}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-center">
+                <button
+                  id="swap-toggle-direction"
+                  type="button"
+                  onClick={() => {
+                    setSwapFrom(prev => prev === "ETH" ? "AGL" : "ETH");
+                    setSwapTo(prev => prev === "AGL" ? "ETH" : "AGL");
+                    setSwapAmount("");
+                    setSwapEstim("0");
+                  }}
+                  className="p-2 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-[#0052FF] hover:border-[#0052FF]/30 transition-all text-xs"
+                >
+                  ⇅
+                </button>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[9px] uppercase font-bold text-zinc-500">Receive To (Estimated)</label>
+                <div className="relative">
+                  <input
+                    id="swap-estimated-output"
+                    type="text"
+                    value={swapEstim}
+                    disabled
+                    className="w-full bg-zinc-950 border border-white/5 rounded-xl p-3 text-xs text-zinc-500 font-mono focus:outline-none"
+                  />
+                  <span className="absolute right-3.5 top-3.5 text-xs text-zinc-400 font-bold font-mono">
+                    {swapTo}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                id="defi-swap-submit"
+                type="submit"
+                disabled={swapping || !swapAmount || parseFloat(swapAmount) <= 0}
+                className="w-full py-3 rounded-xl bg-[#0052FF] hover:bg-blue-600 text-xs font-bold font-display text-white shadow-lg shadow-blue-500/10 disabled:bg-zinc-800 disabled:text-zinc-500 transition-all flex items-center justify-center gap-1.5"
+              >
+                <ArrowLeftRight className="w-4 h-4" />
+                <span>{swapping ? "Executing contract routing..." : "Route Liquidity swap"}</span>
+              </button>
+            </form>
+
+            <div className="p-3.5 bg-black/40 rounded-xl border border-white/5 font-mono text-[10px] text-zinc-400 space-y-2">
+              <div className="flex justify-between">
+                <span>Price Ticker:</span>
+                <span className="text-white">1 ETH = {onChainRate.toLocaleString()} AGL</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Network Fee:</span>
+                <span className="text-emerald-400">&lt; $0.01 (Base Gas Optimizer)</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Liquidity Depth:</span>
+                <span className="text-white">Constant (Automated Linear Curve)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* COLUMNS 2 & 3: ADVANCED CONTRACT-INTEGRATED STAKING PORTAL */}
+          <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-white/5 bg-zinc-900/10 flex flex-col justify-between">
+            <StakingComponent
+              wallet={wallet}
+              onRefreshWallet={onRefreshWallet}
+              addTerminalLog={addTerminalLog}
+              showToast={showToast}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
