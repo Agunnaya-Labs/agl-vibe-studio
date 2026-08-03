@@ -564,6 +564,51 @@ export default function TokenFactoryPage({
             </span>
           </div>
 
+          {/* AI Suggested Presets Header */}
+          <div className="space-y-2 pt-1 pb-2 border-b border-white/5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1 font-mono">
+                <Sparkles className="w-3 h-3 text-brand-purple" /> AI Suggested Token Presets
+              </span>
+              <button
+                type="button"
+                id="add-all-factory-ai-suggestions-btn"
+                onClick={() => {
+                  setTokenName("Agunnaya AI Multi-Vault Protocol");
+                  setTokenSymbol("AGLMVP");
+                  showToast("Added all AI suggestions to token parameters!", "success");
+                }}
+                className="text-[10px] px-2.5 py-1 rounded-lg bg-brand-purple/20 border border-brand-purple/40 hover:bg-brand-purple text-purple-300 hover:text-white transition-all font-mono font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <Sparkles className="w-3 h-3 text-purple-400" />
+                <span>Add All AI Suggestions</span>
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { name: "Agunnaya Sovereign Token", symbol: "AGLS" },
+                { name: "Base Degen Vibes", symbol: "VIBES" },
+                { name: "Yield Vault AI Pass", symbol: "YIELD" },
+                { name: "Security Sentinel DAO", symbol: "AUDIT" }
+              ].map((sug, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  id={`factory-ai-suggestion-${idx}`}
+                  onClick={() => {
+                    setTokenName(sug.name);
+                    setTokenSymbol(sug.symbol);
+                    showToast(`Applied preset: ${sug.name} (${sug.symbol})`, "info");
+                  }}
+                  className="text-[10px] px-2.5 py-1 rounded-lg bg-zinc-900 border border-white/10 hover:border-brand-purple/40 hover:bg-brand-purple/10 text-zinc-300 hover:text-white transition-all font-mono cursor-pointer"
+                >
+                  ⚡ {sug.name} (${sug.symbol})
+                </button>
+              ))}
+            </div>
+          </div>
+
           <form onSubmit={handleCreateToken} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-zinc-300 font-display flex items-center justify-between">

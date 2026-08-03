@@ -225,9 +225,24 @@ export default function AIDeploymentWizardModal({
 
                 {/* Preset Prompt Chips */}
                 <div className="space-y-2">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-mono flex items-center gap-1">
-                    <Zap className="w-3 h-3 text-amber-400" /> 1-Click Requirement Starters
-                  </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-mono flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-amber-400" /> 1-Click Requirement Starters
+                    </span>
+                    <button
+                      type="button"
+                      id="add-all-wizard-suggestions-btn"
+                      onClick={() => {
+                        const combinedPrompts = PRESET_PROMPTS.map((p, i) => `${i + 1}. ${p.title}: ${p.prompt}`).join("\n\n");
+                        setPromptInput(`Build a master Web3 token deployment on Base uniting all AI suggested features:\n\n${combinedPrompts}`);
+                        setSelectedCategory("auto");
+                      }}
+                      className="text-[10px] px-2.5 py-1 rounded-lg bg-brand-purple/20 border border-brand-purple/40 hover:bg-brand-purple text-purple-300 hover:text-white transition-all font-mono font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Sparkles className="w-3 h-3 text-purple-400" />
+                      <span>Add All AI Suggestions</span>
+                    </button>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {PRESET_PROMPTS.map((item, idx) => (
                       <button

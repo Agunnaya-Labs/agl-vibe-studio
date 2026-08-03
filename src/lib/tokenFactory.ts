@@ -2,6 +2,44 @@ import { ethers } from "ethers";
 
 export const TOKEN_FACTORY_ADDRESS = "0x6EF504b98b4369C0a1aF4fD1885D7acCf843dDf6";
 export const BASE_MAINNET_RPC = "https://mainnet.base.org";
+export const BASE_RPC_FALLBACKS = [
+  "https://mainnet.base.org",
+  "https://base.llamarpc.com",
+  "https://1rpc.io/base",
+  "https://base.drpc.org",
+  "https://developer-access-mainnet.base.org"
+];
+
+export const BASE_NETWORK_CONFIG = { chainId: 8453, name: "base" };
+export const BASE_PROVIDER_OPTIONS = { staticNetwork: true };
+
+/**
+ * Creates a static Base Mainnet JsonRpcProvider to bypass unnecessary network detection roundtrips.
+ */
+export function getBaseProvider(rpcUrl: string = BASE_MAINNET_RPC): ethers.JsonRpcProvider {
+  return new ethers.JsonRpcProvider(rpcUrl, BASE_NETWORK_CONFIG, BASE_PROVIDER_OPTIONS);
+}
+
+/**
+ * Helper utility to execute an RPC call with failover across multiple public Base Mainnet nodes.
+ */
+export async function executeRpcCall<T>(
+  fn: (provider: ethers.JsonRpcProvider) => Promise<T>,
+  fallbackValue: T
+): Promise<T> {
+  for (const rpcUrl of BASE_RPC_FALLBACKS) {
+    try {
+      const provider = getBaseProvider(rpcUrl);
+      const result = await fn(provider);
+      if (result !== undefined && result !== null) {
+        return result;
+      }
+    } catch {
+      // Quiet failover to next provider node
+    }
+  }
+  return fallbackValue;
+}
 
 export const TOKEN_FACTORY_ABI = [
   {
@@ -80,10 +118,11 @@ export const TOKEN_FACTORY_ABI = [
 
 export async function fetchContractOwner(): Promise<string> {
   try {
-    const provider = new ethers.JsonRpcProvider(BASE_MAINNET_RPC);
-    const contract = new ethers.Contract(TOKEN_FACTORY_ADDRESS, TOKEN_FACTORY_ABI, provider);
-    const ownerAddress = await contract.owner();
-    return ownerAddress;
+    const ownerAddress = await executeRpcCall(async (provider) => {
+      const contract = new ethers.Contract(TOKEN_FACTORY_ADDRESS, TOKEN_FACTORY_ABI, provider);
+      return await contract.owner();
+    }, "0x6EF504b98b4369C0a1aF4fD1885D7acCf843dDf6");
+    return ownerAddress || "0x6EF504b98b4369C0a1aF4fD1885D7acCf843dDf6";
   } catch (error) {
     console.warn("owner() method not directly callable or contract has no owner getter, returning zero or deployer address fallback", error);
     return "0x6EF504b98b4369C0a1aF4fD1885D7acCf843dDf6";
@@ -92,24 +131,28 @@ export async function fetchContractOwner(): Promise<string> {
 
 export async function fetchOnChainTokenCount(): Promise<number> {
   try {
-    const provider = new ethers.JsonRpcProvider(BASE_MAINNET_RPC);
-    const contract = new ethers.Contract(TOKEN_FACTORY_ADDRESS, TOKEN_FACTORY_ABI, provider);
-    const count = await contract.getTokenCount();
-    return Number(count);
+    const count = await executeRpcCall(async (provider) => {
+      const contract = new ethers.Contract(TOKEN_FACTORY_ADDRESS, TOKEN_FACTORY_ABI, provider);
+      const c = await contract.getTokenCount();
+      return Number(c);
+    }, 0);
+    return count;
   } catch (error) {
-    console.error("Failed to fetch token count from Factory:", error);
+    console.warn("Notice: Failed to fetch token count from Factory (using fallback 0):", error);
     return 0;
   }
 }
 
 export async function fetchOnChainTokens(): Promise<string[]> {
   try {
-    const provider = new ethers.JsonRpcProvider(BASE_MAINNET_RPC);
-    const contract = new ethers.Contract(TOKEN_FACTORY_ADDRESS, TOKEN_FACTORY_ABI, provider);
-    const tokensList = await contract.getTokens();
+    const tokensList = await executeRpcCall(async (provider) => {
+      const contract = new ethers.Contract(TOKEN_FACTORY_ADDRESS, TOKEN_FACTORY_ABI, provider);
+      const rawList = await contract.getTokens();
+      return Array.from(rawList) as string[];
+    }, [] as string[]);
     return tokensList;
   } catch (error) {
-    console.error("Failed to fetch tokens from Factory:", error);
+    console.warn("Notice: Failed to fetch tokens from Factory (using fallback empty list):", error);
     return [];
   }
 }
@@ -160,12 +203,13 @@ export async function fetchTokenCreator(tokenAddress: string): Promise<string> {
     return "";
   }
   try {
-    const provider = new ethers.JsonRpcProvider(BASE_MAINNET_RPC);
-    const contract = new ethers.Contract(TOKEN_FACTORY_ADDRESS, TOKEN_FACTORY_ABI, provider);
-    const creator = await contract.tokenCreator(tokenAddress);
-    return creator;
+    const creator = await executeRpcCall(async (provider) => {
+      const contract = new ethers.Contract(TOKEN_FACTORY_ADDRESS, TOKEN_FACTORY_ABI, provider);
+      return await contract.tokenCreator(tokenAddress);
+    }, "");
+    return creator || "";
   } catch (error) {
-    console.error(`Failed to fetch creator for token ${tokenAddress}:`, error);
+    console.warn(`Notice: Failed to fetch creator for token ${tokenAddress}:`, error);
     return "";
   }
 }
@@ -206,13 +250,15 @@ export async function fetchTokenMetadataOnChain(tokenAddress: string): Promise<{
     return { name: "Custom Token", symbol: "CTKN" };
   }
   try {
-    const provider = new ethers.JsonRpcProvider(BASE_MAINNET_RPC);
-    const tokenContract = new ethers.Contract(tokenAddress, STANDARD_ERC20_ABI, provider);
-    const [name, symbol] = await Promise.all([
-      tokenContract.name().catch(() => "Base Token"),
-      tokenContract.symbol().catch(() => "BTKN")
-    ]);
-    return { name, symbol };
+    const res = await executeRpcCall(async (provider) => {
+      const tokenContract = new ethers.Contract(tokenAddress, STANDARD_ERC20_ABI, provider);
+      const [name, symbol] = await Promise.all([
+        tokenContract.name().catch(() => "Base Token"),
+        tokenContract.symbol().catch(() => "BTKN")
+      ]);
+      return { name, symbol };
+    }, { name: "Base Token", symbol: "BTKN" });
+    return res;
   } catch {
     return { name: "Base Token", symbol: "BTKN" };
   }
@@ -249,7 +295,7 @@ export async function bulkTransferTokensOnChain(
       txHashes.push(tx.hash);
       successfulCount++;
     } catch (err: any) {
-      console.error(`Transfer to ${recipient.address} failed:`, err);
+      console.warn(`Transfer to ${recipient.address} failed:`, err);
       errors.push(`${recipient.address}: ${err?.message || "Transfer failed"}`);
     }
   }
@@ -262,17 +308,19 @@ export async function fetchUserTokenBalance(tokenAddress: string, userAddress: s
     return { balance: "0", symbol: "CTKN" };
   }
   try {
-    const provider = new ethers.JsonRpcProvider(BASE_MAINNET_RPC);
-    const tokenContract = new ethers.Contract(tokenAddress, STANDARD_ERC20_ABI, provider);
-    const [rawBal, decimals, symbol] = await Promise.all([
-      tokenContract.balanceOf(userAddress).catch(() => BigInt(0)),
-      tokenContract.decimals().catch(() => 18),
-      tokenContract.symbol().catch(() => "CTKN")
-    ]);
-    const formatted = ethers.formatUnits(rawBal, decimals);
-    return { balance: formatted, symbol };
+    const res = await executeRpcCall(async (provider) => {
+      const tokenContract = new ethers.Contract(tokenAddress, STANDARD_ERC20_ABI, provider);
+      const [rawBal, decimals, symbol] = await Promise.all([
+        tokenContract.balanceOf(userAddress).catch(() => BigInt(0)),
+        tokenContract.decimals().catch(() => 18),
+        tokenContract.symbol().catch(() => "CTKN")
+      ]);
+      const formatted = ethers.formatUnits(rawBal, decimals);
+      return { balance: formatted, symbol };
+    }, { balance: "0", symbol: "CTKN" });
+    return res;
   } catch (err) {
-    console.error("fetchUserTokenBalance error:", err);
+    console.warn("fetchUserTokenBalance warning:", err);
     return { balance: "0", symbol: "CTKN" };
   }
 }

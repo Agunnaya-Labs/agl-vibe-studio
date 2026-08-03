@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
+import { getBaseProvider } from "../lib/tokenFactory";
 import { 
   Landmark, 
   ShieldAlert, 
@@ -145,7 +146,7 @@ export default function StakingComponent({
   const loadGlobalStakingStats = async () => {
     setLoadingGlobal(true);
     try {
-      const provider = new ethers.JsonRpcProvider(BASE_RPC_URL);
+      const provider = getBaseProvider(BASE_RPC_URL);
       const stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, AGL_STAKING_ABI, provider);
 
       const [totalStakedRaw, isPaused] = await Promise.all([

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { ethers } from "ethers";
+import { getBaseProvider } from "../lib/tokenFactory";
 import { 
   Landmark, 
   ShieldCheck, 
@@ -227,7 +228,7 @@ export default function AirdropSweepTracker({
     setLoadingBalances(true);
     addTerminalLog("system", "RPC_ORACLE: Refreshing Base Mainnet balances for tracked airdrop & treasury addresses...");
     try {
-      const provider = new ethers.JsonRpcProvider(BASE_RPC_URL);
+      const provider = getBaseProvider(BASE_RPC_URL);
       const tokenContract = new ethers.Contract(AGL_TOKEN_ADDRESS, ERC20_MIN_ABI, provider);
 
       const updated = await Promise.all(

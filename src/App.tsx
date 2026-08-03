@@ -33,6 +33,7 @@ import TokenFactoryPage from "./pages/TokenFactoryPage";
 import { AgunnayaDatabase } from "./lib/db";
 import { WalletState, Token, NFTCollection, DAO, GameFiProject, AIAgent, Activity, PriceAlert } from "./types";
 import TerminalLog, { TerminalLine } from "./components/TerminalLog";
+import { getBaseProvider } from "./lib/tokenFactory";
 import { BrainCircuit, Copy, Check, QrCode, X, ShieldCheck, Rocket, BarChart3, Terminal, Zap, ChevronRight, Pin, PinOff } from "lucide-react";
 
 export default function App() {
@@ -396,7 +397,7 @@ export default function App() {
     }
     try {
       addTerminalLog("info", `SYNC: Querying native and AGL balances for ${addr.slice(0, 8)}... on Base Mainnet.`);
-      const baseProvider = new ethers.JsonRpcProvider("https://mainnet.base.org");
+      const baseProvider = getBaseProvider();
       const ethBalRaw = await baseProvider.getBalance(addr);
       const ethBalance = parseFloat(ethers.formatEther(ethBalRaw));
 
@@ -476,7 +477,7 @@ export default function App() {
       // Now query real on-chain balance using JSON-RPC provider pointing to Base Mainnet!
       try {
         addTerminalLog("info", "FETCH_BALANCES: Querying native and AGL balances on Base Mainnet...");
-        const baseProvider = new ethers.JsonRpcProvider("https://mainnet.base.org");
+        const baseProvider = getBaseProvider();
         const ethBalRaw = await baseProvider.getBalance(address);
         ethBalance = parseFloat(ethers.formatEther(ethBalRaw));
 

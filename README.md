@@ -63,9 +63,10 @@ Agunnaya Labs Studio features a tailored **Immersive UI** design system built fo
 *   **20% Platform Fee Split**: Referrers earn exactly 20% of all bonding curve swaps and trading fees automatically in real-time AGL tokens.
 *   **On-Chain Payout Claims**: Interactive dashboard tracking referred user signups, total volume generated, and instant claim settlements.
 
-### 5. 🏦 DeFi Engine & AMM Swapping
-*   **Low-Slippage Swaps**: Instantly swap between ETH and native AGL utility tokens on Base.
-*   **Staking Vaults**: Stake AGL in high-yield vaults with compounding reward rates and flexible lock durations.
+### 5. 🏦 DeFi Engine, AMM Swapping & Staking Vaults
+*   **Low-Slippage Swaps**: Instantly swap between ETH and native AGL utility tokens on Base Mainnet.
+*   **Staking Vaults & Auto-Compound Engine**: Stake AGL in high-yield vaults (Flex, 30-Day, 90-Day, 180-Day) with fixed APRs up to 64%. Toggle the **Auto-Compound Rewards** switch to automatically reinvest accrued yield every 30 seconds or trigger 1-click manual compounding for amplified APY.
+*   **Base Mainnet Airdrop & Treasury Sweep Tracker**: Monitor active token distribution sweeps and treasury multisigs (3/5 Safe) on Base Mainnet with real-time on-chain balance updates, verification badges, and historical sweep activity logs.
 
 ### 6. 🗳️ DAO Builder & Decentralized Governance
 *   **Multi-Sig DAOs**: Create DAOs with custom proposal thresholds, quorum percentages, and lock durations.
@@ -104,6 +105,7 @@ Agunnaya Labs Studio utilizes the standard OpenZeppelin ERC-20 contract ABI stru
 *   **Frontend Framework**: React 19 + TypeScript, styled with Tailwind CSS (v4).
 *   **Backend Proxy**: Express.js server providing bundle delivery and proxying server-side AI requests.
 *   **AI Engine**: Google GenAI SDK (`@google/genai`) using secure server environment variables for Gemini API keys.
+*   **Multi-Node Failover RPC Engine**: Built-in RPC failover handler with static network configuration (`chainId: 8453`) across Base Mainnet RPC providers (`mainnet.base.org`, `base.llamarpc.com`, `1rpc.io/base`, `base.drpc.org`, `developer-access-mainnet.base.org`) to guarantee high uptime and sub-second query speeds.
 *   **Database**: Firebase Firestore (`ai-studio-agunnayalabsstud-dfe9e8c6-b14d-4481-85b1-f815054eab7d`) for session recovery and user records.
 *   **Animations**: Fluid micro-animations powered by the `motion` framework.
 *   **Data Visualization**: Financial charts and bonding curve trajectory visualizers built with `recharts`.

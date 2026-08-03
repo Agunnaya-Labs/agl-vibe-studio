@@ -906,10 +906,35 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                     </div>
 
                     {/* AI Agent Directive Suggestions */}
-                    <div className="space-y-1 mb-2">
-                      <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1 font-mono">
-                        <Sparkles className="w-3 h-3 text-brand-purple" /> Preset AI Agent Suggestions
-                      </span>
+                    <div className="space-y-1.5 mb-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1 font-mono">
+                          <Sparkles className="w-3 h-3 text-brand-purple" /> Preset AI Agent Suggestions
+                        </span>
+                        <button
+                          type="button"
+                          id="add-all-agent-suggestions-btn"
+                          onClick={() => {
+                            setName("Agunnaya Omniscient Sentinel Core");
+                            setSymbol("OMNI");
+                            setDescription("Unified autonomous AI Agent providing contract auditing, yield arbitrage, DAO governance, and sentiment analytics.");
+                            setSubFee("0.0015");
+                            const masterDirective = `You are the Agunnaya Omniscient Sentinel Core, an all-in-one autonomous AI Agent operating on Base Mainnet.
+
+CORE DIRECTIVES:
+1. SECURITY AUDITING: Scan submitted Solidity smart contracts for reentrancy, integer overflows, unhandled low-level calls, and missing access controls.
+2. YIELD OPTIMIZATION: Monitor Base liquidity pools, evaluate APYs, estimate gas overheads, and recommend optimal compounding schedules.
+3. DAO GOVERNANCE: Assist in drafting governance proposals, calculating quorum thresholds, and verifying multi-sig treasury allocations.
+4. SENTIMENT ANALYTICS: Track on-chain DEX volume surges, wallet accumulation patterns, and token liquidity depth.`;
+                            setSystemPrompt(masterDirective);
+                            showToast("Added all AI suggestions to agent directives & configuration!", "success");
+                          }}
+                          className="text-[9px] px-2 py-0.5 rounded-md bg-brand-purple/20 border border-brand-purple/40 hover:bg-brand-purple text-purple-300 hover:text-white transition-all font-mono font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          <Sparkles className="w-2.5 h-2.5 text-purple-400" />
+                          <span>Add All AI Suggestions</span>
+                        </button>
+                      </div>
                       <div className="flex flex-wrap gap-1.5">
                         {[
                           {
@@ -935,6 +960,14 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                             desc: "Treasury and proposal strategy generator for decentralized organizations.",
                             fee: "0.0008",
                             prompt: "You are an autonomous DAO strategist. Help users structure governance proposals, calculate quorum thresholds, and audit treasury allocations."
+                          },
+                          {
+                            label: "📊 Web3 Market Sentiment Sentinel",
+                            name: "Agunnaya Sentiment AI",
+                            symbol: "SENT",
+                            desc: "On-chain DEX liquidity & whale tracking AI agent.",
+                            fee: "0.0006",
+                            prompt: "You are an autonomous Web3 sentiment analyst. Track DEX trading volumes, wallet accumulation trends, and liquidity depth on Base."
                           }
                         ].map((sug, idx) => (
                           <button
@@ -949,7 +982,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
                               setSystemPrompt(sug.prompt);
                               showToast(`Loaded AI Agent preset: ${sug.label}`, "info");
                             }}
-                            className="text-[10px] px-2 py-1 rounded-lg bg-zinc-950 border border-white/10 hover:border-brand-purple/40 hover:bg-brand-purple/10 text-zinc-400 hover:text-white transition-all font-mono"
+                            className="text-[10px] px-2 py-1 rounded-lg bg-zinc-950 border border-white/10 hover:border-brand-purple/40 hover:bg-brand-purple/10 text-zinc-400 hover:text-white transition-all font-mono cursor-pointer"
                           >
                             {sug.label}
                           </button>

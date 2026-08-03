@@ -27,6 +27,7 @@ import {
   TOKEN_FACTORY_ADDRESS, 
   TOKEN_FACTORY_ABI, 
   BASE_MAINNET_RPC,
+  getBaseProvider,
   fetchContractOwner,
   fetchOnChainTokenCount,
   fetchOnChainTokens
@@ -87,7 +88,7 @@ export default function ContractMonitor({
     async function initContractData() {
       setIsInitializing(true);
       try {
-        const provider = new ethers.JsonRpcProvider(BASE_MAINNET_RPC);
+        const provider = getBaseProvider(BASE_MAINNET_RPC);
         providerRef.current = provider;
 
         const contract = new ethers.Contract(contractAddress, TOKEN_FACTORY_ABI, provider);
@@ -141,7 +142,7 @@ export default function ContractMonitor({
           attachListeners(provider, contract);
         }
       } catch (err) {
-        console.error("Contract Monitor init error:", err);
+        console.warn("Contract Monitor init warning:", err);
       } finally {
         if (mounted) setIsInitializing(false);
       }
@@ -261,7 +262,7 @@ export default function ContractMonitor({
         if (showToast) showToast("Refreshed contract on-chain state", "success");
       }
     } catch (err) {
-      console.error("Manual refresh error:", err);
+      console.warn("Manual refresh warning:", err);
     } finally {
       setIsInitializing(false);
     }

@@ -244,11 +244,24 @@ export default function AIAssistantSidebar({
         {/* Suggested Questions with Categories */}
         <div className="p-4 border-t border-white/5 bg-zinc-950/50 space-y-3">
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-1">
               <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1">
                 <Zap className="w-3 h-3 text-brand-purple" /> AI Suggested Queries
               </span>
-              <span className="text-[9px] text-zinc-600 font-mono">1-Click Prompt</span>
+              <button
+                type="button"
+                id="add-all-ai-sidebar-suggestions-btn"
+                onClick={() => {
+                  const activeCategory = predefinedCategories[selectedCategoryIdx];
+                  const masterQuery = `Give me a comprehensive overview of ${activeCategory.label}:\n- ${activeCategory.questions.join("\n- ")}`;
+                  setInput(masterQuery);
+                  showToast("Loaded all AI suggestions for active category!", "info");
+                }}
+                className="text-[9px] px-2 py-0.5 rounded-md bg-brand-purple/20 border border-brand-purple/40 hover:bg-brand-purple text-purple-300 hover:text-white transition-all font-mono font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <Zap className="w-2.5 h-2.5 text-purple-400" />
+                <span>Add All AI Suggestions</span>
+              </button>
             </div>
 
             {/* Category Selector Tabs */}

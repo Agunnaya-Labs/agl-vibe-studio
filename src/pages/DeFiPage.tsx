@@ -673,7 +673,54 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
 
       {/* TAB CONTENT 2: AMM SWAPS & STAKING VAULTS */}
       {defiHubTab === "swaps-staking" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="space-y-6">
+          {/* AI YIELD SUGGESTIONS BAR */}
+          <div className="p-4 rounded-2xl bg-zinc-950/90 border border-white/10 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1 font-mono">
+                <Sparkles className="w-3.5 h-3.5 text-brand-purple" /> AI Suggested Yield Strategies
+              </span>
+              <button
+                type="button"
+                id="add-all-defi-ai-suggestions-btn"
+                onClick={() => {
+                  setSelectedTierId(3); // 180-Day Max APY Vault
+                  setStakeAmount("10000");
+                  setSwapAmount("0.05");
+                  showToast("Applied all AI yield strategies: 180-Day 64% APR Vault + 0.05 ETH AMM Swap preset!", "success");
+                }}
+                className="text-[10px] px-2.5 py-1 rounded-lg bg-brand-purple/20 border border-brand-purple/40 hover:bg-brand-purple text-purple-300 hover:text-white transition-all font-mono font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <Sparkles className="w-3 h-3 text-purple-400" />
+                <span>Add All AI Suggestions</span>
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: "🚀 Max APY Vault (180-Day, 64% APR)", tier: 3, amt: "10000" },
+                { label: "⚡ Flex Liquid Staking (12% APR)", tier: 0, amt: "2500" },
+                { label: "🔄 30-Day Auto-Compounding Vault (28% APR)", tier: 1, amt: "5000" },
+                { label: "🛡️ Safety Lock (90-Day, 42% APR)", tier: 2, amt: "7500" }
+              ].map((sug, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  id={`defi-ai-suggestion-${idx}`}
+                  onClick={() => {
+                    setSelectedTierId(sug.tier);
+                    setStakeAmount(sug.amt);
+                    showToast(`Loaded strategy: ${sug.label}`, "info");
+                  }}
+                  className="text-[10px] px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-white/10 hover:border-brand-purple/40 hover:bg-brand-purple/10 text-zinc-300 hover:text-white transition-all font-mono cursor-pointer"
+                >
+                  ⚡ {sug.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* COLUMN 1: SWAPS */}
           <div className="glass-panel p-6 rounded-2xl border border-white/5 bg-zinc-900/10 space-y-6">
             <div>
@@ -778,6 +825,7 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
               showToast={showToast}
             />
           </div>
+        </div>
         </div>
       )}
     </div>

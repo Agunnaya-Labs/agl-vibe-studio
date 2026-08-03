@@ -722,10 +722,32 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
                   )}
                 </div>
                 {/* AI Prompt Suggestions */}
-                <div className="space-y-1.5 mb-2">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-brand-purple" /> AI Suggested Architect Templates
-                  </span>
+                <div className="space-y-2 mb-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-brand-purple" /> AI Suggested Architect Templates
+                    </span>
+                    <button
+                      type="button"
+                      id="add-all-ai-suggestions-btn"
+                      onClick={() => {
+                        const allSuggestions = [
+                          "1. Meme Token: Create an ERC-20 meme token on Base named 'DegenVibes' (symbol: VIBES) with 10,000,000 supply, linear bonding curve, and a 1% protocol fee split.",
+                          "2. Staking Vault: Build an ERC-20 utility token with a built-in staking vault contract paying 18% APY compounding rewards with 7-day lock periods.",
+                          "3. AI Agent Core: Design an autonomous AI Agent smart contract on Base charging 0.001 ETH per execution call with automated creator fee routing.",
+                          "4. DAO Governance: Build a DAO governance hub with 1,000 token quorum threshold, 51% majority rule, and 3-day voting windows for Base treasury proposals.",
+                          "5. Security Vault: Integrate OpenZeppelin ReentrancyGuard, anti-bot swap cooldowns, and Emergency Pause circuits."
+                        ];
+                        setAiProjectType("Full-Stack Ecosystem");
+                        setAiPrompt(`Architect a complete Web3 dApp ecosystem on Base integrating all AI suggested modules:\n\n${allSuggestions.join("\n\n")}`);
+                        showToast("Added all AI suggestions to the architecture prompt!", "success");
+                      }}
+                      className="text-[10px] px-2.5 py-1 rounded-lg bg-brand-purple/20 border border-brand-purple/40 hover:bg-brand-purple text-purple-300 hover:text-white transition-all font-mono font-bold flex items-center gap-1 shadow-sm cursor-pointer"
+                    >
+                      <Sparkles className="w-3 h-3 text-purple-400" />
+                      <span>Add All AI Suggestions</span>
+                    </button>
+                  </div>
                   <div className="flex flex-wrap gap-1.5">
                     {[
                       {
@@ -752,6 +774,11 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
                         label: "🎮 GameFi XP Reward Pool",
                         type: "GameFi Tournament",
                         prompt: "Deploy a GameFi reward pool contract that issues non-transferable XP tokens for completed quests and unlocks seasonal AGL token prize pools."
+                      },
+                      {
+                        label: "⚡ Reentrancy Guarded Security Vault",
+                        type: "Security Protocol",
+                        prompt: "Build an audited Solidity vault with OpenZeppelin ReentrancyGuard, emergency pause functions, and multi-sig emergency exit safety controls."
                       }
                     ].map((sug, idx) => (
                       <button
@@ -763,7 +790,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
                           setAiPrompt(sug.prompt);
                           showToast(`Loaded AI suggestion: ${sug.label}`, "info");
                         }}
-                        className="text-[10px] px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-white/10 hover:border-brand-purple/40 hover:bg-brand-purple/10 text-zinc-300 hover:text-white transition-all font-mono flex items-center gap-1 text-left"
+                        className="text-[10px] px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-white/10 hover:border-brand-purple/40 hover:bg-brand-purple/10 text-zinc-300 hover:text-white transition-all font-mono flex items-center gap-1 text-left cursor-pointer"
                       >
                         <span>{sug.label}</span>
                       </button>
