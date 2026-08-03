@@ -239,6 +239,17 @@ service cloud.firestore {
       allow delete: if isSignedIn() && (isAdmin() || request.auth.uid == id);
     }
 
+    // TELEGRAM MINI APP — WALLET LINK RECORDS
+    // Written server-side via Firestore REST API using the web API key.
+    // Each document stores: telegramId, walletAddress, updatedAt.
+    // Public read is intentionally allowed so the /auth/user/:id lookup works.
+    // Write is open (no Firebase Auth on the server route) — tighten this
+    // once Firebase Admin SDK is set up with a service account secret.
+    match /tg_users/{telegramId} {
+      allow read: if true;
+      allow write: if isValidId(telegramId);
+    }
+
     // TEST COLLECTION
     match /test/{id} {
       allow read: if true;

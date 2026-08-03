@@ -28,6 +28,7 @@ import ReferralPage from "./pages/ReferralPage";
 import GoogleDrivePage from "./pages/GoogleDrivePage";
 import GmailPage from "./pages/GmailPage";
 import TokenFactoryPage from "./pages/TokenFactoryPage";
+import TelegramMiniAppPage from "./pages/TelegramMiniAppPage";
 
 // Database & Utilities
 import { AgunnayaDatabase } from "./lib/db";
@@ -677,6 +678,13 @@ export default function App() {
           image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80",
           url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=token-factory"
         };
+      case "telegram-miniapp":
+        return {
+          title: "Telegram Wallet Link | Agunnaya Labs Studio",
+          description: "Securely link your Telegram identity to a Base wallet address using HMAC verification and EIP-191 wallet signatures.",
+          image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80",
+          url: "https://ais-pre-co5l5sfwvl3kmcbjbxsv7j-290898077867.europe-west3.run.app/?tab=telegram-miniapp"
+        };
       default:
         return {
           title: "Agunnaya Labs Studio - High Performance Web3 Developer Studio",
@@ -867,6 +875,13 @@ export default function App() {
             onAuthorizeDrive={handleAuthorizeDrive}
             addTerminalLog={addTerminalLog}
             showToast={showToast}
+          />
+        );
+      case "telegram-miniapp":
+        return (
+          <TelegramMiniAppPage
+            wallet={wallet}
+            onOpenWalletModal={() => setIsWalletModalOpen(true)}
           />
         );
       default:

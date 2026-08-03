@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type, ThinkingLevel, GenerateVideosOperation } from "@google/genai";
+import miniAppAuthRouter from "./src/server/miniapp-auth.routes";
 
 const app = express();
 const PORT = 3000;
@@ -539,6 +540,9 @@ app.post("/api/ai/video-download", async (req, res) => {
     res.status(500).json({ error: error.message || "Failed to download video file." });
   }
 });
+
+// Telegram Mini App auth routes
+app.use("/api/miniapp", miniAppAuthRouter);
 
 // Support health check
 app.get("/api/health", (req, res) => {
