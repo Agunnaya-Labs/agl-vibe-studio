@@ -17,61 +17,26 @@
     background: #0d0d0d;
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .glass-panel-hover {
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   .glass-panel-hover:hover {
     background: #111111;
-    border-color: rgba(0, 82, 255, 0.35);
-    box-shadow: 0 8px 32px rgba(0, 82, 255, 0.18), 0 0 15px rgba(139, 92, 246, 0.15);
-    transform: translateY(-2px);
+    border-color: rgba(0, 82, 255, 0.3);
+    box-shadow: 0 0 25px rgba(0, 82, 255, 0.15);
   }
 
   .glass-input {
     background: #050505;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.2s ease-in-out;
   }
   .glass-input:focus {
     border-color: rgba(0, 82, 255, 0.5);
-    box-shadow: 0 0 0 2px rgba(0, 82, 255, 0.2), 0 0 12px rgba(139, 92, 246, 0.15);
+    box-shadow: 0 0 0 2px rgba(0, 82, 255, 0.2);
     outline: none;
-  }
-
-  /* Dashboard Element & Card Subtle Hover Effects */
-  .agunnaya-card {
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
-                box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
-                border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
-                background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .agunnaya-card:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(139, 92, 246, 0.1);
-  }
-
-  /* Button Micro-Interactions */
-  .btn-agunnaya {
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .btn-agunnaya:hover {
-    transform: translateY(-1px);
-    filter: brightness(1.08);
-  }
-  .btn-agunnaya:active {
-    transform: translateY(0.5px) scale(0.98);
-    filter: brightness(0.95);
-  }
-
-  /* Interactive Tab Smooth Transitions */
-  .agunnaya-tab {
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .agunnaya-tab:hover {
-    transform: translateY(-1px);
   }
 
   /* Neon Glows */
@@ -86,11 +51,7 @@
   }
 
   .glow-border-purple {
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
-    transition: box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .glow-border-purple:hover {
-    box-shadow: 0 0 30px rgba(139, 92, 246, 0.35);
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
   }
 
   /* Scrollbar custom styling */
@@ -104,58 +65,10 @@
   ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 3px;
-    transition: background-color 0.2s ease;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(139, 92, 246, 0.5);
+    background: rgba(139, 92, 246, 0.4);
   }
-}
-
-/* Modal Pop-up Smooth Animations */
-@keyframes modal-backdrop-fade {
-  from {
-    opacity: 0;
-    backdrop-filter: blur(0px);
-  }
-  to {
-    opacity: 1;
-    backdrop-filter: blur(12px);
-  }
-}
-
-@keyframes modal-panel-scale-up {
-  from {
-    opacity: 0;
-    transform: scale(0.94) translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.animate-modal-backdrop {
-  animation: modal-backdrop-fade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-modal-panel {
-  animation: modal-panel-scale-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Subtle Page / Dashboard Container Keyframe Animations */
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in-up {
-  animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Custom styles for terminal and visuals */
