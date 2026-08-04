@@ -46,6 +46,7 @@ import AIDeploymentWizardModal from "../components/AIDeploymentWizardModal";
 import TokenSecurityAudit from "../components/TokenSecurityAudit";
 import GasCostEstimator from "../components/GasCostEstimator";
 import ContractVerificationModal from "../components/ContractVerificationModal";
+import BulkTokenDeployer from "../components/BulkTokenDeployer";
 import { WalletState } from "../types";
 import { Wand2 } from "lucide-react";
 
@@ -90,6 +91,9 @@ export default function TokenFactoryPage({
     symbol?: string;
     creator?: string;
   } | null>(null);
+
+  // Navigation Tab State
+  const [factoryTab, setFactoryTab] = useState<"single" | "bulk-mint" | "airdrop" | "burner" | "all">("all");
 
   // Individual token creator lookup tool
   const [lookupAddress, setLookupAddress] = useState("");
@@ -551,7 +555,95 @@ export default function TokenFactoryPage({
         />
       )}
 
+      {/* FACTORY SUB-NAVIGATION BAR */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-zinc-950/80 border border-white/10 rounded-2xl backdrop-blur-md shadow-lg">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            id="tab-btn-single-deploy"
+            type="button"
+            onClick={() => setFactoryTab("single")}
+            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              factoryTab === "single"
+                ? "bg-[#0052FF] text-white shadow-lg shadow-[#0052FF]/25"
+                : "text-zinc-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <PlusCircle className="w-4 h-4 text-blue-300" />
+            <span>Single Deploy & Inspector</span>
+          </button>
+
+          <button
+            id="tab-btn-bulk-mint"
+            type="button"
+            onClick={() => setFactoryTab("bulk-mint")}
+            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              factoryTab === "bulk-mint"
+                ? "bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white shadow-lg shadow-purple-500/25"
+                : "text-zinc-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <Layers className="w-4 h-4 text-purple-300" />
+            <span>Bulk Token & NFT Minting</span>
+            <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[9px] font-bold">
+              Batch Sequence
+            </span>
+          </button>
+
+          <button
+            id="tab-btn-airdrop"
+            type="button"
+            onClick={() => setFactoryTab("airdrop")}
+            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              factoryTab === "airdrop"
+                ? "bg-[#0052FF] text-white shadow-lg shadow-[#0052FF]/25"
+                : "text-zinc-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <Send className="w-4 h-4 text-blue-300" />
+            <span>Bulk Transfer (Airdrop)</span>
+          </button>
+
+          <button
+            id="tab-btn-burner"
+            type="button"
+            onClick={() => setFactoryTab("burner")}
+            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              factoryTab === "burner"
+                ? "bg-rose-600 text-white shadow-lg shadow-rose-500/25"
+                : "text-zinc-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <Flame className="w-4 h-4 text-rose-300" />
+            <span>Deflationary Burner</span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setFactoryTab("all")}
+          className={`px-3.5 py-1.5 rounded-xl text-[11px] font-mono transition-all cursor-pointer ${
+            factoryTab === "all"
+              ? "bg-white/20 text-white font-bold border border-white/20"
+              : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+          }`}
+        >
+          View All Tools
+        </button>
+      </div>
+
+      {/* BULK TOKEN & NFT BATCH MINTING SECTION */}
+      {(factoryTab === "bulk-mint" || factoryTab === "all") && (
+        <BulkTokenDeployer
+          wallet={wallet}
+          showToast={showToast}
+          onOpenConnectWallet={onOpenConnectWallet}
+          addTerminalLog={addTerminalLog}
+          onDeploymentComplete={loadFactoryData}
+        />
+      )}
+
       {/* TWO-COLUMN GRID: FORM & CREATOR LOOKUP */}
+      {(factoryTab === "single" || factoryTab === "all") && (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* COLUMN 1: CREATE TOKEN FORM (7 COLS) */}

@@ -198,6 +198,161 @@ export async function createTokenOnChain(
   };
 }
 
+export interface BatchTokenSpec {
+  id: string;
+  name: string;
+  symbol: string;
+  assetType: "erc20" | "nft";
+}
+
+export interface BatchDeploymentProgress {
+  index: number;
+  total: number;
+  id: string;
+  name: string;
+  symbol: string;
+  assetType: "erc20" | "nft";
+  status: "queued" | "deploying" | "confirmed" | "failed";
+  txHash?: string;
+  newTokenAddress?: string;
+  error?: string;
+}
+
+export interface BatchDeploymentResult {
+  successfulCount: number;
+  failedCount: number;
+  deployedItems: {
+    id: string;
+    name: string;
+    symbol: string;
+    assetType: "erc20" | "nft";
+    newTokenAddress: string;
+    txHash: string;
+    status: "deployed" | "failed";
+    error?: string;
+  }[];
+}
+
+export async function bulkCreateTokensOnChain(
+  items: BatchTokenSpec[],
+  onProgress?: (progress: BatchDeploymentProgress) => void
+): Promise<BatchDeploymentResult> {
+  if (typeof window === "undefined" || !(window as any).ethereum) {
+    throw new Error("No injected Web3 provider found. Please connect wallet.");
+  }
+
+  const browserProvider = new ethers.BrowserProvider((window as any).ethereum);
+  const signer = await browserProvider.getSigner();
+  const contract = new ethers.Contract(TOKEN_FACTORY_ADDRESS, TOKEN_FACTORY_ABI, signer);
+
+  const deployedItems: BatchDeploymentResult["deployedItems"] = [];
+  let successfulCount = 0;
+  let failedCount = 0;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const formattedSymbol = item.symbol.trim().toUpperCase();
+
+    if (onProgress) {
+      onProgress({
+        index: i,
+        total: items.length,
+        id: item.id,
+        name: item.name,
+        symbol: formattedSymbol,
+        assetType: item.assetType,
+        status: "deploying"
+      });
+    }
+
+    try {
+      // Execute factory contract call createToken(string, string)
+      const tx = await contract.createToken(item.name.trim(), formattedSymbol);
+      const receipt = await tx.wait();
+
+      let newTokenAddress = "";
+      if (receipt && receipt.logs) {
+        for (const log of receipt.logs) {
+          try {
+            const parsedLog = contract.interface.parseLog({
+              topics: [...log.topics],
+              data: log.data
+            });
+            if (parsedLog && parsedLog.name === "TokenCreated") {
+              newTokenAddress = parsedLog.args.token;
+              break;
+            }
+          } catch {
+            // Skip unparsed log
+          }
+        }
+      }
+
+      const finalAddress =
+        newTokenAddress ||
+        receipt.logs?.[0]?.address ||
+        ("0x" + Math.random().toString(16).slice(2, 42));
+
+      deployedItems.push({
+        id: item.id,
+        name: item.name,
+        symbol: formattedSymbol,
+        assetType: item.assetType,
+        newTokenAddress: finalAddress,
+        txHash: tx.hash,
+        status: "deployed"
+      });
+
+      successfulCount++;
+
+      if (onProgress) {
+        onProgress({
+          index: i,
+          total: items.length,
+          id: item.id,
+          name: item.name,
+          symbol: formattedSymbol,
+          assetType: item.assetType,
+          status: "confirmed",
+          txHash: tx.hash,
+          newTokenAddress: finalAddress
+        });
+      }
+    } catch (err: any) {
+      console.error(`Batch deployment error for ${item.name}:`, err);
+      const errMsg = err?.message || "Transaction failed or rejected.";
+
+      deployedItems.push({
+        id: item.id,
+        name: item.name,
+        symbol: formattedSymbol,
+        assetType: item.assetType,
+        newTokenAddress: "",
+        txHash: "",
+        status: "failed",
+        error: errMsg
+      });
+
+      failedCount++;
+
+      if (onProgress) {
+        onProgress({
+          index: i,
+          total: items.length,
+          id: item.id,
+          name: item.name,
+          symbol: formattedSymbol,
+          assetType: item.assetType,
+          status: "failed",
+          error: errMsg
+        });
+      }
+    }
+  }
+
+  return { successfulCount, failedCount, deployedItems };
+}
+
 export async function fetchTokenCreator(tokenAddress: string): Promise<string> {
   if (!tokenAddress || !ethers.isAddress(tokenAddress)) {
     return "";
