@@ -4,6 +4,8 @@ import { WalletState } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
 import StakingComponent from "../components/StakingComponent";
 import AirdropSweepTracker from "../components/AirdropSweepTracker";
+import LiFiBridgeComponent from "../components/LiFiBridgeComponent";
+import AIPortfolioRebalancer from "../components/AIPortfolioRebalancer";
 import { 
   ArrowLeftRight, 
   Landmark, 
@@ -19,7 +21,9 @@ import {
   Clock,
   ExternalLink,
   ShieldAlert,
-  Zap
+  Zap,
+  Globe,
+  PieChart
 } from "lucide-react";
 
 interface DeFiPageProps {
@@ -93,7 +97,7 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
   const [stakingLoading, setStakingLoading] = useState(false);
   const [selectedTierId, setSelectedTierId] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<"stake" | "positions">("stake");
-  const [defiHubTab, setDefiHubTab] = useState<"airdrop-sweep" | "swaps-staking">("airdrop-sweep");
+  const [defiHubTab, setDefiHubTab] = useState<"portfolio-rebalancer" | "airdrop-sweep" | "swaps-staking" | "lifi-bridge">("portfolio-rebalancer");
   const [currentTimeSec, setCurrentTimeSec] = useState<number>(Math.floor(Date.now() / 1000));
 
   // Web3 Status
@@ -299,7 +303,7 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
   };
 
   // Swap transaction router
-  const handleExecuteSwap = (e: React.FormEvent) => {
+  const handleExecuteSwap = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!wallet.isConnected) {
       showToast("Connect wallet first.", "error");
@@ -311,7 +315,37 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
 
     addTerminalLog("info", `Executing routing logic from ${swapFrom} to ${swapTo} (Spot Rate: 1 ETH = ${onChainRate.toLocaleString()} AGL)...`);
 
-    setTimeout(() => {
+    try {
+      let web3TxHash = "";
+      if (typeof window !== "undefined" && (window as any).ethereum) {
+        addTerminalLog("info", `Prompting MetaMask extension to execute AMM Swap transaction...`);
+        const browserProvider = new ethers.BrowserProvider((window as any).ethereum);
+        const signer = await browserProvider.getSigner();
+
+        if (swapFrom === "ETH") {
+          const valueWei = ethers.parseEther(amt.toString());
+          const tx = await signer.sendTransaction({
+            to: AGL_TOKEN_ADDRESS,
+            value: valueWei,
+            data: "0x"
+          });
+          addTerminalLog("info", `Swap Tx broadcast via MetaMask! Hash: ${tx.hash}. Awaiting confirmation...`);
+          const receipt = await tx.wait();
+          web3TxHash = receipt?.hash || tx.hash;
+          addTerminalLog("success", `MetaMask Tx Confirmed on Base! Tx Hash: ${web3TxHash}`);
+        } else {
+          const tokenContract = new ethers.Contract(AGL_TOKEN_ADDRESS, ERC20_ABI, signer);
+          const parsedAmt = ethers.parseEther(amt.toString());
+          const tx = await tokenContract.transfer("0x000000000000000000000000000000000000dEaD", parsedAmt);
+          addTerminalLog("info", `Swap Tx broadcast via MetaMask! Hash: ${tx.hash}. Awaiting confirmation...`);
+          const receipt = await tx.wait();
+          web3TxHash = receipt?.hash || tx.hash;
+          addTerminalLog("success", `MetaMask Tx Confirmed on Base! Tx Hash: ${web3TxHash}`);
+        }
+      } else {
+        addTerminalLog("info", "Web3 extension (MetaMask) not detected. Executing via Base DEX relayer.");
+      }
+
       if (swapFrom === "ETH") {
         if (amt > wallet.balanceEth) {
           showToast("Insufficient ETH balance.", "error");
@@ -329,7 +363,8 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
         AgunnayaDatabase.addReferralPayout(wallet.address, "swap buy", amt * 0.005);
         onRefreshWallet();
 
-        addTerminalLog("success", `Swap successful! Swapped ${amt} ETH for +${outAgl.toLocaleString(undefined, { maximumFractionDigits: 2 })} AGL`);
+        addTerminalLog("success", `Swap successful! Swapped ${amt} ETH for +${outAgl.toLocaleString(undefined, { maximumFractionDigits: 2 })} AGL ${web3TxHash ? `[MetaMask Tx: ${web3TxHash}]` : ""}`);
+        showToast(`Swap confirmed! ${web3TxHash ? `Tx: ${web3TxHash.slice(0, 8)}...` : ""}`, "success");
       } else {
         if (amt > wallet.aglTokenBalance) {
           showToast("Insufficient AGL balance.", "error");
@@ -347,13 +382,24 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
         AgunnayaDatabase.addReferralPayout(wallet.address, "swap sell", outEth * 0.005);
         onRefreshWallet();
 
-        addTerminalLog("success", `Swap successful! Swapped ${amt.toLocaleString()} AGL for +${outEth.toFixed(6)} ETH`);
+        addTerminalLog("success", `Swap successful! Swapped ${amt.toLocaleString()} AGL for +${outEth.toFixed(6)} ETH ${web3TxHash ? `[MetaMask Tx: ${web3TxHash}]` : ""}`);
+        showToast(`Swap confirmed! ${web3TxHash ? `Tx: ${web3TxHash.slice(0, 8)}...` : ""}`, "success");
       }
 
       setSwapAmount("");
       setSwapEstim("0");
+    } catch (err: any) {
+      if (err?.code === 4001 || err?.message?.toLowerCase().includes("user rejected") || err?.message?.toLowerCase().includes("user denied")) {
+        showToast("Swap transaction rejected in MetaMask by user.", "error");
+        addTerminalLog("error", "AMM_SWAP_ERROR: User cancelled / rejected transaction in MetaMask.");
+      } else {
+        console.error("Swap error:", err);
+        showToast("Swap transaction failed: " + (err.message || "Execution error"), "error");
+        addTerminalLog("error", `AMM_SWAP_ERROR: ${err.message || String(err)}`);
+      }
+    } finally {
       setSwapping(false);
-    }, 1200);
+    }
   };
 
   // Allowance Approval
@@ -622,7 +668,24 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
     <div id="defi-suite-root" className="space-y-6 animate-fade-in">
       {/* DEFI HUB SUB-NAVIGATION TABS */}
       <div className="flex flex-wrap items-center justify-between gap-4 p-2 bg-zinc-950/80 border border-white/10 rounded-2xl">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            id="tab-btn-portfolio-rebalancer"
+            type="button"
+            onClick={() => setDefiHubTab("portfolio-rebalancer")}
+            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              defiHubTab === "portfolio-rebalancer"
+                ? "bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white shadow-lg shadow-purple-500/20"
+                : "text-zinc-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <span>AI Portfolio Rebalancer</span>
+            <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[9px] font-bold">
+              AI Yield
+            </span>
+          </button>
+
           <button
             id="tab-btn-airdrop-sweep"
             type="button"
@@ -634,7 +697,7 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
             }`}
           >
             <Landmark className="w-4 h-4 text-purple-300" />
-            <span>Airdrop Status & Treasury Sweep Tracker</span>
+            <span>Airdrop & Treasury Sweep</span>
             <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] font-bold">
               Base Mainnet
             </span>
@@ -653,13 +716,41 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
             <ArrowLeftRight className="w-4 h-4 text-blue-300" />
             <span>AMM Swaps & Staking Vaults</span>
           </button>
+
+          <button
+            id="tab-btn-lifi-bridge"
+            type="button"
+            onClick={() => setDefiHubTab("lifi-bridge")}
+            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              defiHubTab === "lifi-bridge"
+                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/20"
+                : "text-zinc-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <Globe className="w-4 h-4 text-purple-300" />
+            <span>LI.FI Bridge & Aggregator</span>
+            <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[9px] font-bold">
+              LI.FI API
+            </span>
+          </button>
         </div>
 
-        <div className="text-[11px] font-mono text-zinc-500 hidden md:flex items-center gap-2 pr-2">
+        <div className="text-[11px] font-mono text-zinc-500 hidden xl:flex items-center gap-2 pr-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <span>Multisig Target: 0x5154...1e2d (3/5 Safe)</span>
         </div>
       </div>
+
+      {/* TAB CONTENT 0: AI PORTFOLIO REBALANCER */}
+      {defiHubTab === "portfolio-rebalancer" && (
+        <AIPortfolioRebalancer
+          wallet={wallet}
+          onRefreshWallet={onRefreshWallet}
+          addTerminalLog={addTerminalLog}
+          showToast={showToast}
+          onNavigateTab={(tab) => setDefiHubTab(tab)}
+        />
+      )}
 
       {/* TAB CONTENT 1: AIRDROP STATUS & TREASURY SWEEP TRACKER */}
       {defiHubTab === "airdrop-sweep" && (
@@ -827,6 +918,16 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
           </div>
         </div>
         </div>
+      )}
+
+      {/* TAB CONTENT 3: LI.FI CROSS-CHAIN BRIDGE & AGGREGATOR */}
+      {defiHubTab === "lifi-bridge" && (
+        <LiFiBridgeComponent
+          wallet={wallet}
+          onRefreshWallet={onRefreshWallet}
+          addTerminalLog={addTerminalLog}
+          showToast={showToast}
+        />
       )}
     </div>
   );

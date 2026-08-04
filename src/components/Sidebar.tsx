@@ -19,7 +19,6 @@ import {
   Flame,
   Gauge,
   Database,
-  MessageCircle,
   X
 } from "lucide-react";
 
@@ -73,7 +72,6 @@ export default function Sidebar({
     { id: "ai-builder", label: "AI Contract Builder", icon: Sparkles, category: "Workspace", highlight: true },
     { id: "gdrive", label: "Google Drive Cloud", icon: HardDrive, category: "Workspace" },
     { id: "gmail", label: "Gmail Automation", icon: Mail, category: "Workspace" },
-    { id: "telegram-miniapp", label: "Telegram Wallet Link", icon: MessageCircle, category: "Workspace", highlight: true },
     { id: "explore", label: "Bonding Curve Pad", icon: Rocket, category: "Assets & Creation" },
     { id: "token-factory", label: "Token Factory (Base)", icon: Database, category: "Assets & Creation", highlight: true },
     { id: "nfts", label: "NFT Studio", icon: Disc, category: "Assets & Creation" },

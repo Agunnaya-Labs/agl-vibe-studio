@@ -22,12 +22,19 @@ import {
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceDot } from "recharts";
 import { proposeDeploymentAI, AIDeploymentProposal } from "../lib/gemini";
+import { WalletState } from "../types";
+import { validateAndConsumeCredits, CREDIT_COSTS } from "../lib/credits";
+import InsufficientCreditsModal from "./InsufficientCreditsModal";
 
 interface AIDeploymentWizardModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAutoFill?: (proposal: AIDeploymentProposal) => void;
   onDirectLaunch?: (proposal: AIDeploymentProposal) => void;
+  wallet?: WalletState;
+  onRefreshWallet?: () => void;
+  showToast?: (message: string, type: "success" | "error" | "info") => void;
+  addTerminalLog?: (type: "info" | "success" | "error" | "buy" | "sell" | "system", message: string) => void;
 }
 
 const PRESET_PROMPTS = [
@@ -57,7 +64,11 @@ export default function AIDeploymentWizardModal({
   isOpen,
   onClose,
   onAutoFill,
-  onDirectLaunch
+  onDirectLaunch,
+  wallet,
+  onRefreshWallet,
+  showToast,
+  addTerminalLog
 }: AIDeploymentWizardModalProps) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [promptInput, setPromptInput] = useState("");
@@ -71,10 +82,37 @@ export default function AIDeploymentWizardModal({
   const [activeTab, setActiveTab] = useState<"curve" | "contract" | "security">("curve");
   const [copiedCode, setCopiedCode] = useState(false);
 
+  // Insufficient Credits Modal State
+  const [insufficientCreditsModalOpen, setInsufficientCreditsModalOpen] = useState(false);
+  const [creditsModalData, setCreditsModalData] = useState({ featureName: "", required: 0, available: 0 });
+
   if (!isOpen) return null;
 
   const handleStartSynthesis = async () => {
     if (!promptInput.trim()) return;
+
+    let creditResult: any = null;
+    if (wallet && showToast) {
+      creditResult = validateAndConsumeCredits({
+        wallet,
+        onRefreshWallet: onRefreshWallet || (() => {}),
+        requiredCredits: CREDIT_COSTS.DEPLOYMENT_PROPOSAL,
+        featureName: "AI Deployment Wizard Proposal",
+        showToast,
+        addTerminalLog,
+        onRequestCreditsModal: (featureName, required, available) => {
+          setCreditsModalData({ featureName, required, available });
+          setInsufficientCreditsModalOpen(true);
+        }
+      });
+
+      if (!creditResult.success) {
+        setIsSynthesizing(false);
+        setStep(1);
+        return;
+      }
+    }
+
     setStep(2);
     setIsSynthesizing(true);
     setSynthesisStage(1);
@@ -91,6 +129,7 @@ export default function AIDeploymentWizardModal({
       }, 2100);
     } catch (err) {
       console.error("Synthesis error:", err);
+      if (creditResult) creditResult.refund();
       setIsSynthesizing(false);
       setStep(1);
     }
@@ -752,6 +791,17 @@ export default function AIDeploymentWizardModal({
           </div>
         </motion.div>
       </div>
+
+      <InsufficientCreditsModal
+        isOpen={insufficientCreditsModalOpen}
+        onClose={() => setInsufficientCreditsModalOpen(false)}
+        featureName={creditsModalData.featureName}
+        requiredCredits={creditsModalData.required}
+        availableCredits={creditsModalData.available}
+        onNavigateToCredits={() => {
+          window.location.href = "/?tab=agl-credits";
+        }}
+      />
     </AnimatePresence>
   );
 }

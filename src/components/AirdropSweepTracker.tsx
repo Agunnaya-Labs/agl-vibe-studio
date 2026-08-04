@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { ethers } from "ethers";
 import { getBaseProvider } from "../lib/tokenFactory";
 import { 
@@ -23,7 +23,6 @@ import {
   Check,
   TrendingUp,
   Download,
-  Upload,
   Info
 } from "lucide-react";
 import { WalletState } from "../types";
@@ -179,93 +178,6 @@ interface AirdropSweepTrackerProps {
   showToast: (message: string, type: "success" | "error" | "info") => void;
 }
 
-// ─── CSV helpers ──────────────────────────────────────────────────────────────
-
-/** Parse a single CSV line respecting double-quoted fields. */
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let cell = "";
-  let inQuotes = false;
-  for (const ch of line) {
-    if (ch === '"') { inQuotes = !inQuotes; }
-    else if (ch === "," && !inQuotes) { result.push(cell.trim()); cell = ""; }
-    else { cell += ch; }
-  }
-  result.push(cell.trim());
-  return result;
-}
-
-/** Convert CSV text to TrackedWallet[]. Skips rows with invalid addresses. */
-function parseCSVToWallets(text: string): TrackedWallet[] {
-  const lines = text.replace(/\r/g, "").trim().split("\n");
-  if (lines.length < 2) return [];
-  const headers = parseCSVLine(lines[0]).map((h) => h.replace(/^"|"$/g, ""));
-
-  const get = (row: string[], col: string) =>
-    (row[headers.indexOf(col)] ?? "").replace(/^"|"$/g, "").trim();
-
-  return lines
-    .slice(1)
-    .filter((l) => l.trim())
-    .map((line, i) => {
-      const row = parseCSVLine(line);
-      const label   = get(row, "Label");
-      const address = get(row, "Address");
-      const role    = get(row, "Role");
-      const rawStatus = get(row, "Claim Status");
-
-      if (!ethers.isAddress(address)) return null;
-
-      const isDeployerOnly    = /deployment only/i.test(role);
-      const isTreasuryMultisig = /sweep destination|multisig/i.test(role);
-
-      let claimStatus: TrackedWallet["claimStatus"] = "Eligible";
-      if      (rawStatus === "Claimed")                claimStatus = "Claimed";
-      else if (rawStatus === "Excluded" || isDeployerOnly) claimStatus = "Excluded";
-      else if (rawStatus === "Consolidated Destination" || isTreasuryMultisig)
-                                                       claimStatus = "Consolidated Destination";
-
-      return {
-        id:                `csv-${Date.now()}-${i}`,
-        label:             label || `Wallet ${i + 1}`,
-        address,
-        role,
-        chain:             get(row, "Chain")             || "Base Mainnet",
-        dateCreated:       get(row, "Date Created")      || new Date().toISOString().split("T")[0],
-        fundingSource:     get(row, "Funding Source")    || undefined,
-        protocolsActivity: get(row, "Protocols/Activity") || "",
-        tokenSymbol:       get(row, "Token Symbol")      || "ETH",
-        claimStatus,
-        claimDate:         get(row, "Claim Date")        || undefined,
-        notes:             get(row, "Notes")             || "",
-        isDeployerOnly,
-        isTreasuryMultisig,
-        ethBalance:        0,
-        aglBalance:        0,
-        unclaimedAglAirdrop: 0,
-        isSwept:           false,
-      } as TrackedWallet;
-    })
-    .filter((w): w is TrackedWallet => w !== null);
-}
-
-/** Serialize current wallet list to CSV text matching the original column format. */
-function walletsToCSV(wallets: TrackedWallet[]): string {
-  const HEADERS = [
-    "Label","Address","Role","Chain","Date Created","Funding Source",
-    "Protocols/Activity","Token Symbol","Claim Status","Claim Date","Notes",
-  ];
-  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
-  const rows = wallets.map((w) =>
-    [
-      w.label, w.address, w.role, w.chain, w.dateCreated,
-      w.fundingSource ?? "", w.protocolsActivity, w.tokenSymbol,
-      w.claimStatus, w.claimDate ?? "", w.notes,
-    ].map(String).map(escape).join(",")
-  );
-  return [HEADERS.join(","), ...rows].join("\n");
-}
-
 export default function AirdropSweepTracker({
   wallet,
   onRefreshWallet,
@@ -283,8 +195,6 @@ export default function AirdropSweepTracker({
     }
     return INITIAL_WALLETS;
   });
-
-  const csvFileRef = useRef<HTMLInputElement>(null);
 
   const [categoryFilter, setCategoryFilter] = useState<"all" | "airdrop" | "deployer" | "treasury">("all");
   const [claimFilter, setClaimFilter] = useState<string>("all");
@@ -479,47 +389,6 @@ export default function AirdropSweepTracker({
     }, 1200);
   };
 
-  // CSV Import
-  const handleCSVFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const parsed = parseCSVToWallets(text);
-      if (parsed.length === 0) {
-        showToast("No valid wallet addresses found in CSV.", "error");
-        addTerminalLog("error", "CSV_IMPORT: No valid Base addresses detected in uploaded file.");
-        return;
-      }
-      // Merge: keep existing wallets whose address isn't in the import, then append new ones
-      setWallets((prev) => {
-        const importedAddresses = new Set(parsed.map((w) => w.address.toLowerCase()));
-        const kept = prev.filter((w) => !importedAddresses.has(w.address.toLowerCase()));
-        return [...kept, ...parsed];
-      });
-      showToast(`Imported ${parsed.length} wallet${parsed.length !== 1 ? "s" : ""} from CSV.`, "success");
-      addTerminalLog("success", `CSV_IMPORT: Loaded ${parsed.length} addresses into Airdrop Tracker.`);
-    };
-    reader.readAsText(file);
-    // Reset so the same file can be re-imported if needed
-    e.target.value = "";
-  };
-
-  // CSV Export
-  const handleExportCSV = () => {
-    const csv  = walletsToCSV(wallets);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
-    a.download = `airdrop-tracker-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast("Tracker exported as CSV.", "success");
-    addTerminalLog("info", `CSV_EXPORT: Exported ${wallets.length} wallet records.`);
-  };
-
   // Add custom wallet
   const handleAddWallet = (e: React.FormEvent) => {
     e.preventDefault();
@@ -587,35 +456,6 @@ export default function AirdropSweepTracker({
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loadingBalances ? "animate-spin text-purple-400" : "text-zinc-400"}`} />
             <span>{loadingBalances ? "Syncing RPC..." : "Sync RPC Balances"}</span>
-          </button>
-
-          {/* Hidden CSV file input */}
-          <input
-            ref={csvFileRef}
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            onChange={handleCSVFileChange}
-          />
-
-          <button
-            type="button"
-            onClick={() => csvFileRef.current?.click()}
-            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-300 font-mono font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
-            title="Import wallets from CSV"
-          >
-            <Upload className="w-3.5 h-3.5 text-green-400" />
-            <span>Import CSV</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-300 font-mono font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
-            title="Export tracker to CSV"
-          >
-            <Download className="w-3.5 h-3.5 text-blue-400" />
-            <span>Export CSV</span>
           </button>
 
           <button

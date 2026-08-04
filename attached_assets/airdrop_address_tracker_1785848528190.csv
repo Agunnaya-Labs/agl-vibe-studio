@@ -1,7 +1,0 @@
-Label,Address,Role,Chain,Date Created,Funding Source,Protocols/Activity,Token Symbol,Claim Status,Claim Date,Notes
-Deployer Wallet 1,0xd034e94465db1669f80d817c66e58cf194d027c8,Contract deployment only,Base Mainnet,2026-08-03,,AGL / CHONK9K / Spin Engine deploys,,,,Never used for airdrop farming
-Deployer Wallet 2,0xffb6505912fce95b42be4860477201bb4e204e9f,Contract deployment only,Base Mainnet,2026-08-03,,AGL / CHONK9K / Spin Engine deploys,,,,Never used for airdrop farming
-Airdrop Wallet 1,0x0a7ec711da824f0C10578793ccda9298C03ec09e,Active mainnet dApp interaction,Base Mainnet,2026-08-03,,,,,,
-Airdrop Wallet 2,0xd0af6a9d1325aAaE1ab05a9D7DfA5A104112B45A,Active mainnet dApp interaction,Base Mainnet,2026-08-03,,,,,,
-Airdrop Wallet 3,0xed6bd5dc9d62f0a8bd5b91d90a318866b9425308,Active mainnet dApp interaction,Base Mainnet,2026-08-03,,,,,,
-Treasury Safe (Multisig),0x51546D5f9B66EcE7b6b91FA09D5b4aFF648D1e2d,Final sweep destination (multisig treasury),Base Mainnet,2026-08-03,,,,,,Consolidated — replaces standalone Treasury EOA

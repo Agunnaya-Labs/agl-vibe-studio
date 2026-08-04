@@ -3,6 +3,8 @@ import { Bot, Send, BrainCircuit, X, MessageSquare, Zap, Coins, Pin, PinOff } fr
 import { chatWithAgentAI } from "../lib/gemini";
 import { WalletState } from "../types";
 import { AgunnayaDatabase } from "../lib/db";
+import { validateAndConsumeCredits, CREDIT_COSTS } from "../lib/credits";
+import InsufficientCreditsModal from "./InsufficientCreditsModal";
 
 interface AIAssistantSidebarProps {
   isOpen: boolean;
@@ -57,37 +59,34 @@ export default function AIAssistantSidebar({
   ];
 
   const [selectedCategoryIdx, setSelectedCategoryIdx] = useState(0);
+  const [insufficientCreditsModalOpen, setInsufficientCreditsModalOpen] = useState(false);
+  const [creditsModalData, setCreditsModalData] = useState({ featureName: "", required: 0, available: 0 });
 
   const handleSend = async (textToSend: string) => {
     if (!textToSend.trim() || isLoading) return;
 
-    if (wallet.isConnected) {
-      const currentCredits = wallet.aglCredits || 0;
-      if (currentCredits < 5) {
-        showToast("Insufficient credits! 5 AGL Credits required.", "error");
-        setMessages(prev => [...prev, { 
-          role: "user", 
-          content: textToSend.trim() 
-        }, {
-          role: "assistant",
-          content: "⚠️ SYSTEM NOTICE: Insufficient computational credits! Each query to the AI Advisor consumes 5 AGL Credits.\n\nPlease navigate to the **AGL Credits** page from the sidebar and permanently burn AGL tokens on-chain or in the Sepolia Sandbox to earn more computational credits."
-        }]);
-        setInput("");
-        return;
+    const creditResult = validateAndConsumeCredits({
+      wallet,
+      onRefreshWallet,
+      requiredCredits: CREDIT_COSTS.AI_ADVISOR_CHAT,
+      featureName: "AI Advisor Query",
+      showToast,
+      onRequestCreditsModal: (featureName, required, available) => {
+        setCreditsModalData({ featureName, required, available });
+        setInsufficientCreditsModalOpen(true);
       }
+    });
 
-      if (currentCredits < 20) {
-        showToast("⚠️ Low computational credits remaining. Top up your AGL credits soon to prevent future AI failures!", "info");
-      }
-
-      // Deduct 5 credits
-      const updatedWallet: WalletState = {
-        ...wallet,
-        aglCredits: Math.max(0, currentCredits - 5)
-      };
-      AgunnayaDatabase.saveWallet(updatedWallet);
-      onRefreshWallet();
-      showToast("Consumed 5 AGL Credits", "info");
+    if (!creditResult.success) {
+      setMessages(prev => [...prev, { 
+        role: "user", 
+        content: textToSend.trim() 
+      }, {
+        role: "assistant",
+        content: "⚠️ SYSTEM NOTICE: Insufficient computational credits! Each query to the AI Advisor consumes 5 AGL Credits.\n\nPlease click 'Burn AGL Tokens to Buy Credits' or navigate to the AGL Credits page to top up."
+      }]);
+      setInput("");
+      return;
     }
 
     const userMsg = textToSend.trim();
@@ -127,9 +126,11 @@ export default function AIAssistantSidebar({
       }, 20);
 
     } catch (err: any) {
+      console.error(err);
+      creditResult.refund();
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: `Sorry, I encountered an issue: ${err.message || "Connection refused. Please make sure process.env.GEMINI_API_KEY is configured."}`
+        content: `Sorry, I encountered an issue: ${err.message || "Connection refused. Please make sure process.env.GEMINI_API_KEY is configured."}. Your 5 AGL Credits have been refunded.`
       }]);
       setIsLoading(false);
     }
@@ -324,6 +325,17 @@ export default function AIAssistantSidebar({
           </form>
         </div>
       </div>
+
+      <InsufficientCreditsModal
+        isOpen={insufficientCreditsModalOpen}
+        onClose={() => setInsufficientCreditsModalOpen(false)}
+        featureName={creditsModalData.featureName}
+        requiredCredits={creditsModalData.required}
+        availableCredits={creditsModalData.available}
+        onNavigateToCredits={() => {
+          window.location.href = "/?tab=agl-credits";
+        }}
+      />
     </>
   );
 }

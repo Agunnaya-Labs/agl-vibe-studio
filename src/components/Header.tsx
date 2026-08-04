@@ -321,6 +321,27 @@ export default function Header({
 
       {/* Web3 User Status / Connect Buttons */}
       <div className="flex items-center gap-3">
+        {/* Aggregate Balance Summary Header Badge */}
+        {(wallet.isConnected || (wallet.subAccounts && wallet.subAccounts.length > 0)) && (
+          <button
+            id="header-aggregate-summary"
+            onClick={onOpenConnect}
+            title="Manage Sub-Accounts & view multi-account portfolio summary"
+            className="hidden xl:flex items-center gap-2.5 px-3 py-1.5 bg-gradient-to-r from-[#0052FF]/10 via-purple-500/10 to-emerald-500/10 hover:from-[#0052FF]/20 hover:via-purple-500/20 hover:to-emerald-500/20 border border-white/10 hover:border-brand-purple/40 rounded-xl text-xs font-mono transition-all group"
+          >
+            <div className="flex items-center gap-2 text-zinc-300">
+              <Layers className="w-3.5 h-3.5 text-brand-purple group-hover:rotate-12 transition-transform" />
+              <span className="text-[10px] uppercase font-bold text-zinc-400">Agg Portfolio:</span>
+              <span className="text-white font-bold">Ξ {(wallet.subAccounts && wallet.subAccounts.length > 0 ? wallet.subAccounts.reduce((a, s) => a + (s.balanceEth || 0), 0) : wallet.balanceEth).toFixed(4)}</span>
+              <span className="text-zinc-600">•</span>
+              <span className="text-[#0052FF] font-bold">{(wallet.subAccounts && wallet.subAccounts.length > 0 ? wallet.subAccounts.reduce((a, s) => a + (s.aglTokenBalance || 0), 0) : wallet.aglTokenBalance).toLocaleString()} AGL</span>
+            </div>
+            <span className="text-[9px] bg-brand-purple/20 text-brand-purple px-1.5 py-0.5 rounded-md border border-brand-purple/30 font-bold">
+              {wallet.subAccounts?.length || 1} Accounts
+            </span>
+          </button>
+        )}
+
         {wallet.isConnected && (
           <>
             {/* Faucet/Fund Button */}

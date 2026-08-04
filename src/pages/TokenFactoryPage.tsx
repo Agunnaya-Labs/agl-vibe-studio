@@ -45,6 +45,7 @@ import ContractMonitor from "../components/ContractMonitor";
 import AIDeploymentWizardModal from "../components/AIDeploymentWizardModal";
 import TokenSecurityAudit from "../components/TokenSecurityAudit";
 import GasCostEstimator from "../components/GasCostEstimator";
+import ContractVerificationModal from "../components/ContractVerificationModal";
 import { WalletState } from "../types";
 import { Wand2 } from "lucide-react";
 
@@ -83,6 +84,12 @@ export default function TokenFactoryPage({
   const [copiedMap, setCopiedMap] = useState<Record<string, boolean>>({});
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [auditTargetAddress, setAuditTargetAddress] = useState<string | null>(null);
+  const [verificationTarget, setVerificationTarget] = useState<{
+    address: string;
+    name?: string;
+    symbol?: string;
+    creator?: string;
+  } | null>(null);
 
   // Individual token creator lookup tool
   const [lookupAddress, setLookupAddress] = useState("");
@@ -709,13 +716,27 @@ export default function TokenFactoryPage({
               </div>
 
               <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  id="btn-verify-created-contract"
+                  onClick={() => setVerificationTarget({
+                    address: createdTokenAddress,
+                    name: tokenName || "Custom Token",
+                    symbol: tokenSymbol || "CTKN",
+                    creator: wallet.address
+                  })}
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-mono font-bold text-[11px] flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Verify Contract</span>
+                </button>
                 <a
                   href={`https://basescan.org/address/${createdTokenAddress}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all"
                 >
-                  View Contract on BaseScan
+                  View BaseScan
                   <ExternalLink className="w-3 h-3" />
                 </a>
                 {creationTxHash && (
@@ -725,7 +746,7 @@ export default function TokenFactoryPage({
                     rel="noopener noreferrer"
                     className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all"
                   >
-                    View Tx Details
+                    View Tx
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 )}
@@ -1307,7 +1328,7 @@ export default function TokenFactoryPage({
                     </button>
                   )}
 
-                  <div className="grid grid-cols-3 gap-1.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     <button
                       onClick={() => {
                         setBulkTokenAddress(item.address);
@@ -1342,6 +1363,19 @@ export default function TokenFactoryPage({
                       <ShieldCheck className="w-3 h-3 text-emerald-400" />
                       <span>Audit</span>
                     </button>
+
+                    <button
+                      onClick={() => setVerificationTarget({
+                        address: item.address,
+                        name: item.name || "Custom Token",
+                        symbol: item.symbol || "CTKN",
+                        creator: item.creator
+                      })}
+                      className="py-1.5 px-2 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 text-teal-300 font-mono text-[9px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    >
+                      <ShieldCheck className="w-3 h-3 text-teal-400" />
+                      <span>Verify</span>
+                    </button>
                   </div>
                 </div>
               );
@@ -1354,6 +1388,9 @@ export default function TokenFactoryPage({
       <AIDeploymentWizardModal
         isOpen={isWizardOpen}
         onClose={() => setIsWizardOpen(false)}
+        wallet={wallet}
+        showToast={showToast}
+        addTerminalLog={addTerminalLog}
         onAutoFill={(proposal) => {
           setTokenName(proposal.tokenName);
           setTokenSymbol(proposal.tokenSymbol);
@@ -1388,6 +1425,20 @@ export default function TokenFactoryPage({
             />
           </div>
         </div>
+      )}
+
+      {/* Contract Verification Modal */}
+      {verificationTarget && (
+        <ContractVerificationModal
+          isOpen={Boolean(verificationTarget)}
+          onClose={() => setVerificationTarget(null)}
+          contractAddress={verificationTarget.address}
+          tokenName={verificationTarget.name}
+          tokenSymbol={verificationTarget.symbol}
+          creatorAddress={verificationTarget.creator}
+          showToast={showToast}
+          addTerminalLog={addTerminalLog}
+        />
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { Token, NFTCollection, DAO, GameFiProject, AIAgent, WalletState, Activity, StakingPool, ReferralRecord, ReferralPayout, PriceAlert } from "../types";
+import { Token, NFTCollection, DAO, GameFiProject, AIAgent, WalletState, Activity, StakingPool, ReferralRecord, ReferralPayout, PriceAlert, SubAccount } from "../types";
 import { doc, setDoc, getDocs, collection, deleteDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType, auth } from "./firebase";
 
@@ -568,11 +568,231 @@ export class AgunnayaDatabase {
   }
 
   static getWallet(): WalletState {
-    return this.safeParse<WalletState>("agl_wallet", DEFAULT_WALLET);
+    const wallet = this.safeParse<WalletState>("agl_wallet", DEFAULT_WALLET);
+    // Ensure subAccounts is populated
+    const subAccounts = this.getSubAccounts();
+    return {
+      ...wallet,
+      subAccounts
+    };
   }
 
   static saveWallet(wallet: WalletState) {
     localStorage.setItem("agl_wallet", JSON.stringify(wallet));
+    
+    // Also sync active wallet balances into active subAccount if present
+    if (wallet.isConnected && wallet.address) {
+      const subs = this.getSubAccounts();
+      const activeIdx = subs.findIndex(s => s.address.toLowerCase() === wallet.address.toLowerCase() || s.isActive);
+      if (activeIdx !== -1) {
+        subs[activeIdx].address = wallet.address;
+        subs[activeIdx].balanceEth = wallet.balanceEth;
+        subs[activeIdx].aglTokenBalance = wallet.aglTokenBalance;
+        subs[activeIdx].aglCredits = wallet.aglCredits;
+        subs[activeIdx].walletType = wallet.walletType || "metamask";
+        subs[activeIdx].isSmartAccount = wallet.isSmartAccount;
+        subs[activeIdx].isActive = true;
+        this.saveSubAccounts(subs);
+      }
+    }
+  }
+
+  static getSubAccounts(): SubAccount[] {
+    const seed: SubAccount[] = [
+      {
+        id: "sub_primary",
+        label: "Primary Mainnet Wallet",
+        address: "0x479596943e70316A0d893De1876EBeA1Ea8E4D5B",
+        walletType: "metamask",
+        balanceEth: 0.15,
+        aglTokenBalance: 500,
+        aglCredits: 200,
+        isSmartAccount: false,
+        isActive: true,
+        createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000
+      },
+      {
+        id: "sub_trading",
+        label: "Trading Sub-Account #1",
+        address: "0x8921B4d80a89bd8c75248fae7c176bd1854698",
+        walletType: "coinbase",
+        balanceEth: 0.35,
+        aglTokenBalance: 1250,
+        aglCredits: 85,
+        isSmartAccount: false,
+        isActive: false,
+        createdAt: Date.now() - 15 * 24 * 60 * 60 * 1000
+      },
+      {
+        id: "sub_agent",
+        label: "AI Operator Key (AA Vault)",
+        address: "0xAA9034f59a88219034f31c0234a9d901f1028e3b",
+        walletType: "smart",
+        balanceEth: 0.08,
+        aglTokenBalance: 2500,
+        aglCredits: 350,
+        isSmartAccount: true,
+        isActive: false,
+        createdAt: Date.now() - 5 * 24 * 60 * 60 * 1000
+      }
+    ];
+
+    return this.safeParse<SubAccount[]>("agl_sub_accounts", seed);
+  }
+
+  static saveSubAccounts(subAccounts: SubAccount[]) {
+    localStorage.setItem("agl_sub_accounts", JSON.stringify(subAccounts));
+  }
+
+  static switchSubAccount(subAccountId: string): { wallet: WalletState; subAccounts: SubAccount[] } {
+    const subs = this.getSubAccounts();
+    let selectedSub: SubAccount | null = null;
+
+    const updatedSubs = subs.map(sub => {
+      if (sub.id === subAccountId) {
+        selectedSub = { ...sub, isActive: true };
+        return selectedSub;
+      }
+      return { ...sub, isActive: false };
+    });
+
+    this.saveSubAccounts(updatedSubs);
+
+    if (selectedSub) {
+      const s = selectedSub as SubAccount;
+      const updatedWallet: WalletState = {
+        isConnected: true,
+        address: s.address,
+        balanceEth: s.balanceEth,
+        aglTokenBalance: s.aglTokenBalance,
+        aglCredits: s.aglCredits,
+        walletType: s.walletType,
+        isSmartAccount: s.isSmartAccount,
+        sponsoredGasEth: s.isSmartAccount ? 0.05 : 0,
+        subAccounts: updatedSubs
+      };
+      localStorage.setItem("agl_wallet", JSON.stringify(updatedWallet));
+      return { wallet: updatedWallet, subAccounts: updatedSubs };
+    }
+
+    const currentWallet = this.getWallet();
+    return { wallet: currentWallet, subAccounts: updatedSubs };
+  }
+
+  static addSubAccount(newSubData: Omit<SubAccount, "id" | "createdAt" | "isActive">): { wallet: WalletState; subAccounts: SubAccount[] } {
+    const subs = this.getSubAccounts();
+    const newSub: SubAccount = {
+      ...newSubData,
+      id: "sub_" + Math.random().toString(36).substring(2, 9),
+      createdAt: Date.now(),
+      isActive: false
+    };
+
+    subs.push(newSub);
+    this.saveSubAccounts(subs);
+
+    const currentWallet = this.getWallet();
+    currentWallet.subAccounts = subs;
+    return { wallet: currentWallet, subAccounts: subs };
+  }
+
+  static updateSubAccount(id: string, updates: Partial<SubAccount>): SubAccount[] {
+    const subs = this.getSubAccounts();
+    const updated = subs.map(sub => {
+      if (sub.id === id) {
+        return { ...sub, ...updates };
+      }
+      return sub;
+    });
+    this.saveSubAccounts(updated);
+
+    // If active sub-account was updated, sync wallet
+    const activeSub = updated.find(s => s.id === id && s.isActive);
+    if (activeSub) {
+      const w = this.getWallet();
+      const updatedWallet: WalletState = {
+        ...w,
+        label: activeSub.label,
+        balanceEth: activeSub.balanceEth,
+        aglTokenBalance: activeSub.aglTokenBalance,
+        aglCredits: activeSub.aglCredits,
+        subAccounts: updated
+      } as any;
+      this.saveWallet(updatedWallet);
+    }
+
+    return updated;
+  }
+
+  static removeSubAccount(id: string): { wallet: WalletState; subAccounts: SubAccount[] } {
+    let subs = this.getSubAccounts();
+    const target = subs.find(s => s.id === id);
+    if (!target) return { wallet: this.getWallet(), subAccounts: subs };
+
+    subs = subs.filter(s => s.id !== id);
+
+    // If we deleted the active sub-account, pick the first remaining one
+    if (target.isActive && subs.length > 0) {
+      subs[0].isActive = true;
+      this.saveSubAccounts(subs);
+      return this.switchSubAccount(subs[0].id);
+    }
+
+    this.saveSubAccounts(subs);
+    const wallet = this.getWallet();
+    wallet.subAccounts = subs;
+    return { wallet, subAccounts: subs };
+  }
+
+  static transferBetweenSubAccounts(
+    fromId: string, 
+    toId: string, 
+    asset: "ETH" | "AGL", 
+    amount: number
+  ): { success: boolean; message: string } {
+    const subs = this.getSubAccounts();
+    const sender = subs.find(s => s.id === fromId);
+    const receiver = subs.find(s => s.id === toId);
+
+    if (!sender || !receiver) {
+      return { success: false, message: "Invalid sender or receiver sub-account." };
+    }
+
+    if (amount <= 0) {
+      return { success: false, message: "Transfer amount must be greater than zero." };
+    }
+
+    if (asset === "ETH") {
+      if (sender.balanceEth < amount) {
+        return { success: false, message: `Insufficient ETH balance in ${sender.label}. Available: ${sender.balanceEth.toFixed(4)} ETH` };
+      }
+      sender.balanceEth -= amount;
+      receiver.balanceEth += amount;
+    } else {
+      if (sender.aglTokenBalance < amount) {
+        return { success: false, message: `Insufficient AGL balance in ${sender.label}. Available: ${sender.aglTokenBalance.toLocaleString()} AGL` };
+      }
+      sender.aglTokenBalance -= amount;
+      receiver.aglTokenBalance += amount;
+    }
+
+    this.saveSubAccounts(subs);
+
+    // Sync active wallet if sender or receiver is active
+    const activeSub = subs.find(s => s.isActive);
+    if (activeSub) {
+      const w = this.getWallet();
+      w.balanceEth = activeSub.balanceEth;
+      w.aglTokenBalance = activeSub.aglTokenBalance;
+      w.aglCredits = activeSub.aglCredits;
+      w.subAccounts = subs;
+      localStorage.setItem("agl_wallet", JSON.stringify(w));
+    }
+
+    return { 
+      success: true, 
+      message: `Transferred ${amount.toLocaleString()} ${asset} from ${sender.label} to ${receiver.label}!` 
+    };
   }
 
   static getTokenBalances(address: string): { [tokenAddress: string]: number } {

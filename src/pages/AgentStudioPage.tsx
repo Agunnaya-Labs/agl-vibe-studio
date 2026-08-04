@@ -11,6 +11,8 @@ import {
   generateVideoStartAI, 
   pollVideoStatusAI 
 } from "../lib/gemini";
+import { validateAndConsumeCredits, CREDIT_COSTS } from "../lib/credits";
+import InsufficientCreditsModal from "../components/InsufficientCreditsModal";
 import { 
   Bot, Send, BrainCircuit, X, MessageSquare, Plus, Zap, Award, Coins, 
   Sparkles, Cpu, Layers, ShieldCheck, Mic, MicOff, Image as ImageIcon, 
@@ -59,6 +61,10 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
   const [isLiquidityModalOpen, setIsLiquidityModalOpen] = useState(false);
   const [topUpAglAmount, setTopUpAglAmount] = useState("10"); // 10 AGL = 1,000 Credits
   const [isBuyingCredits, setIsBuyingCredits] = useState(false);
+
+  // Insufficient Credits Modal State
+  const [insufficientCreditsModalOpen, setInsufficientCreditsModalOpen] = useState(false);
+  const [creditsModalData, setCreditsModalData] = useState({ featureName: "", required: 0, available: 0 });
 
   // Active chat state
   const [activeChatAgent, setActiveChatAgent] = useState<AIAgent | null>(null);
@@ -411,6 +417,39 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
     e.preventDefault();
     if (!chatInput.trim() && !attachedImage || chatLoading || !activeChatAgent) return;
 
+    const creditResult = validateAndConsumeCredits({
+      wallet,
+      onRefreshWallet: onRefreshAgents,
+      requiredCredits: CREDIT_COSTS.AGENT_HARNESS_CHAT,
+      featureName: `Agent Query (${activeChatAgent.name})`,
+      showToast,
+      addTerminalLog,
+      onRequestCreditsModal: (featureName, required, available) => {
+        setCreditsModalData({ featureName, required, available });
+        setInsufficientCreditsModalOpen(true);
+      }
+    });
+
+    if (!creditResult.success) {
+      if (wallet.isConnected && wallet.balanceEth >= activeChatAgent.usageFeeEth) {
+        // Fallback to ETH payment if available
+        const updatedWallet: WalletState = { 
+          ...wallet, 
+          balanceEth: Math.max(0, wallet.balanceEth - activeChatAgent.usageFeeEth) 
+        };
+        AgunnayaDatabase.saveWallet(updatedWallet);
+        onRefreshAgents();
+        showToast(`Paid subscription fee: ${activeChatAgent.usageFeeEth} ETH`, "info");
+        addTerminalLog("system", `AGENT HARNESS: Debited ${activeChatAgent.usageFeeEth} ETH fee for ${activeChatAgent.name}.`);
+      } else {
+        setChatMessages(prev => [...prev, {
+          role: "assistant",
+          content: `⚠️ AGENT KERNEL BLOCKED: Insufficient computational credits! 10 AGL Credits or ${activeChatAgent.usageFeeEth} ETH required to query ${activeChatAgent.name}.\n\nPlease top up credits on the AGL Credits page.`
+        }]);
+        return;
+      }
+    }
+
     const userText = chatInput.trim();
     const currentAttachedImage = attachedImage;
     
@@ -471,34 +510,11 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
         }
       }, 15);
 
-      if (wallet.isConnected) {
-        let updatedWallet: WalletState;
-        const currentCredits = wallet.aglCredits || 0;
-        
-        if (currentCredits >= 10) {
-          const remainingCredits = currentCredits - 10;
-          updatedWallet = {
-            ...wallet,
-            aglCredits: remainingCredits
-          };
-          showToast("Query sponsored with 10 AGL Credits!", "success");
-          addTerminalLog("system", `AGENT HARNESS: Sponsored query using 10 computational credits for ${activeChatAgent.name}.`);
-        } else {
-          updatedWallet = { 
-            ...wallet, 
-            balanceEth: Math.max(0, wallet.balanceEth - activeChatAgent.usageFeeEth) 
-          };
-          showToast(`Paid subscription fee: ${activeChatAgent.usageFeeEth} ETH`, "info");
-          addTerminalLog("system", `AGENT HARNESS: Debited ${activeChatAgent.usageFeeEth} ETH standard trigger fee for ${activeChatAgent.name}.`);
-        }
-        AgunnayaDatabase.saveWallet(updatedWallet);
-        onRefreshAgents();
-      }
-
     } catch (err: any) {
+      if (creditResult && creditResult.success) creditResult.refund();
       setChatMessages(prev => [...prev, {
         role: "assistant",
-        content: `Error connecting to AI kernel: ${err.message || "Endpoint timeout."}`
+        content: `Error connecting to AI kernel: ${err.message || "Endpoint timeout."}. Credits refunded if applicable.`
       }]);
       setChatLoading(false);
     }
@@ -599,6 +615,25 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
   // Creative Studio: Generate high-quality image
   const handleGenerateImage = async () => {
     if (!imagePrompt.trim() || isGeneratingImage) return;
+
+    const creditResult = validateAndConsumeCredits({
+      wallet,
+      onRefreshWallet: onRefreshAgents,
+      requiredCredits: CREDIT_COSTS.IMAGE_GENERATION,
+      featureName: "AI Image Generation",
+      showToast,
+      addTerminalLog,
+      onRequestCreditsModal: (featureName, required, available) => {
+        setCreditsModalData({ featureName, required, available });
+        setInsufficientCreditsModalOpen(true);
+      }
+    });
+
+    if (!creditResult.success) {
+      setIsGeneratingImage(false);
+      return;
+    }
+
     setIsGeneratingImage(true);
     setGeneratedImageUrl("");
     showToast("Dispatching text-to-image pipeline...", "info");
@@ -607,6 +642,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
       setGeneratedImageUrl(url);
       showToast("High-quality asset generated!", "success");
     } catch (err: any) {
+      creditResult.refund();
       showToast("Image generation failed: " + err.message, "error");
     } finally {
       setIsGeneratingImage(false);
@@ -634,6 +670,25 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
   // Creative Studio: Generate Veo Video
   const handleGenerateVideo = async () => {
     if (!videoPrompt.trim() || isVideoGenerating) return;
+
+    const creditResult = validateAndConsumeCredits({
+      wallet,
+      onRefreshWallet: onRefreshAgents,
+      requiredCredits: CREDIT_COSTS.VIDEO_GENERATION,
+      featureName: "Veo 3 Video Synthesis",
+      showToast,
+      addTerminalLog,
+      onRequestCreditsModal: (featureName, required, available) => {
+        setCreditsModalData({ featureName, required, available });
+        setInsufficientCreditsModalOpen(true);
+      }
+    });
+
+    if (!creditResult.success) {
+      setIsVideoGenerating(false);
+      return;
+    }
+
     setIsVideoGenerating(true);
     setGeneratedVideoUrl("");
     setVideoProgress("Initializing Veo 3 rendering framework...");
@@ -677,6 +732,7 @@ export default function AgentStudioPage({ wallet, agents, onRefreshAgents, addTe
       setGeneratedVideoUrl(videoUrl);
       showToast("Veo Video rendered successfully!", "success");
     } catch (err: any) {
+      creditResult.refund();
       showToast("Video synthesis failed: " + err.message, "error");
     } finally {
       clearInterval(progressInterval);
@@ -1949,6 +2005,16 @@ CORE DIRECTIVES:
         </div>
       )}
 
+      <InsufficientCreditsModal
+        isOpen={insufficientCreditsModalOpen}
+        onClose={() => setInsufficientCreditsModalOpen(false)}
+        featureName={creditsModalData.featureName}
+        requiredCredits={creditsModalData.required}
+        availableCredits={creditsModalData.available}
+        onNavigateToCredits={() => {
+          window.location.href = "/?tab=agl-credits";
+        }}
+      />
     </div>
   );
 }

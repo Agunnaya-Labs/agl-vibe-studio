@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { generateProjectAI, AIDeploymentProposal } from "../lib/gemini";
 import AIDeploymentWizardModal from "../components/AIDeploymentWizardModal";
+import InsufficientCreditsModal from "../components/InsufficientCreditsModal";
+import { validateAndConsumeCredits, CREDIT_COSTS } from "../lib/credits";
 import { AgunnayaDatabase, BASE_PRICE, SLOPE } from "../lib/db";
 import { Token, WalletState } from "../types";
 import IPFSUploader from "../components/IPFSUploader";
@@ -65,6 +67,10 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
   const [deploySuccessAI, setDeploySuccessAI] = useState(false);
   const [deployedAddress, setDeployedAddress] = useState<string | null>(null);
   const [deployStep, setDeployStep] = useState<"idle" | "compiling" | "gas" | "pending" | "completed">("idle");
+
+  // Insufficient Credits Modal State
+  const [insufficientCreditsModalOpen, setInsufficientCreditsModalOpen] = useState(false);
+  const [creditsModalData, setCreditsModalData] = useState({ featureName: "", required: 0, available: 0 });
 
   // Firebase Session Auto-Save State
   const [lastSaved, setLastSaved] = useState<number | null>(null);
@@ -301,27 +307,22 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
     e.preventDefault();
     if (!aiPrompt.trim() || aiLoading) return;
 
-    if (wallet.isConnected) {
-      const currentCredits = wallet.aglCredits || 0;
-      if (currentCredits < 50) {
-        showToast("Insufficient credits! 50 AGL Credits required for contract generation.", "error");
-        addTerminalLog("error", "AI ARCHITECT: Generation rejected. Insufficient computational credits. Navigate to the AGL Credits page and permanently burn AGL tokens to earn credits.");
-        return;
+    const creditResult = validateAndConsumeCredits({
+      wallet,
+      onRefreshWallet,
+      requiredCredits: CREDIT_COSTS.CONTRACT_BUILD,
+      featureName: "AI Contract Architect",
+      showToast,
+      addTerminalLog,
+      onRequestCreditsModal: (featureName, required, available) => {
+        setCreditsModalData({ featureName, required, available });
+        setInsufficientCreditsModalOpen(true);
       }
-      
-      // Deduct 50 credits
-      const remainingCredits = Math.max(0, currentCredits - 50);
-      const updatedWallet: WalletState = {
-        ...wallet,
-        aglCredits: remainingCredits
-      };
-      AgunnayaDatabase.saveWallet(updatedWallet);
-      onRefreshWallet();
-      showToast("Consumed 50 AGL Credits", "info");
+    });
 
-      if (remainingCredits < 20) {
-        showToast("⚠️ Low computational credits remaining. Top up your AGL credits soon to prevent future AI failures!", "info");
-      }
+    if (!creditResult.success) {
+      setAiLoading(false);
+      return;
     }
 
     setAiLoading(true);
@@ -334,6 +335,7 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
       addTerminalLog("system", `Generated smart contract architecture for ${data.name} (${data.symbol})`);
     } catch (err: any) {
       console.error(err);
+      creditResult.refund();
       showToast(`AI Architect offline: ${err.message || "Please check your GEMINI_API_KEY settings."}`, "error");
     } finally {
       setAiLoading(false);
@@ -1412,6 +1414,18 @@ export default function CreatePage({ wallet, onLaunchSuccess, onRefreshWallet, a
       onClose={() => setIsWizardOpen(false)}
       onAutoFill={handleWizardAutoFill}
       onDirectLaunch={handleWizardDirectLaunch}
+    />
+
+    {/* Insufficient Credits Modal */}
+    <InsufficientCreditsModal
+      isOpen={insufficientCreditsModalOpen}
+      onClose={() => setInsufficientCreditsModalOpen(false)}
+      featureName={creditsModalData.featureName}
+      requiredCredits={creditsModalData.required}
+      availableCredits={creditsModalData.available}
+      onNavigateToCredits={() => {
+        window.location.href = "/?tab=agl-credits";
+      }}
     />
     </div>
   );

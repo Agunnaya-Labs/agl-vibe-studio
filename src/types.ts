@@ -158,6 +158,19 @@ export interface StakingPool {
   lockPeriodDays: number;
 }
 
+export interface SubAccount {
+  id: string;
+  label: string;
+  address: string;
+  walletType: "metamask" | "coinbase" | "walletconnect" | "smart";
+  balanceEth: number;
+  aglTokenBalance: number;
+  aglCredits: number;
+  isSmartAccount: boolean;
+  isActive: boolean;
+  createdAt: number;
+}
+
 export interface WalletState {
   isConnected: boolean;
   address: string;
@@ -168,6 +181,7 @@ export interface WalletState {
   aglTokenBalance: number; // Native utility token Agunnaya Labs Token
   aglCredits: number; // Computational credits earned via on-chain AGL burning
   aglLiquidityStaked?: number;
+  subAccounts?: SubAccount[];
 }
 
 export interface Activity {

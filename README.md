@@ -58,7 +58,18 @@ Agunnaya Labs Studio features a tailored **Immersive UI** design system built fo
 *   **Categorized Prompt Suggestions**: Instant 1-click queries powered by Gemini 3.6 Flash grouped into **Tokens & Curve**, **AI Agents**, and **DeFi & DAOs**.
 *   **AGL Credit Metering**: Each AI query consumes 5 AGL Credits, fully backed on-chain or in the Sepolia Sandbox by burning AGL tokens.
 
-### 4. 🎁 20% Referral & Affiliate Engine
+### 4. 💼 Multi-Account Wallet Studio & Aggregate Portfolio Reserves
+*   **Simultaneous Multi-Sub-Account Tracking**: Connect and track multiple sub-accounts (MetaMask EOA, Coinbase Wallet, WalletConnect, and Account Abstraction Smart Accounts) simultaneously in a unified Wallet Connection Modal.
+*   **Aggregate Reserve Header Summary**: Live aggregate portfolio reserve header in the main application navigation bar displaying combined total ETH, AGL tokens, and AI Credits across all tracked sub-accounts.
+*   **1-Click Account Switching & Internal Transfers**: Seamlessly switch active wallets or transfer ETH and AGL tokens between internal sub-accounts with zero latency.
+*   **Sub-Account Faucet & Labeling**: Rename sub-accounts, fund balances via the testnet faucet, or link custom contract addresses.
+
+### 5. 🔍 Real-Time Token Discovery & Contract Search
+*   **Multi-Attribute Search Input**: Instant, real-time token search on the Explore page matching token names, ticker symbols (e.g. `AGL`, `ETH`), and 0x contract addresses (`0x...`).
+*   **1-Click Copy Contract Address**: Integrated contract address bar on each token card with quick clipboard copying and checkmark confirmation.
+*   **Clear Query & Filter Counters**: Displays live search result counts (`Showing X / Y tokens`) with a 1-click query clear button.
+
+### 6. 🎁 20% Referral & Affiliate Engine
 *   **Personalized Referral Aliases**: Personalize unique invite handles (e.g. `agl_neonalchemist`) linked to wallet signatures.
 *   **20% Platform Fee Split**: Referrers earn exactly 20% of all bonding curve swaps and trading fees automatically in real-time AGL tokens.
 *   **On-Chain Payout Claims**: Interactive dashboard tracking referred user signups, total volume generated, and instant claim settlements.

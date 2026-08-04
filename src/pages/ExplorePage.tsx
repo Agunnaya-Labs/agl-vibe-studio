@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Token } from "../types";
 import ImageWithFallback from "../components/ImageWithFallback";
-import { Search, Star, StarOff, TrendingUp, Sparkles, Filter, Percent } from "lucide-react";
+import { Search, Star, StarOff, Filter, Percent, Copy, Check, X } from "lucide-react";
 
 interface ExplorePageProps {
   tokens: Token[];
@@ -13,12 +13,20 @@ export default function ExplorePage({ tokens, onSelectToken }: ExplorePageProps)
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("trending");
   const [watchlist, setWatchlist] = useState<string[]>([]);
+  const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
   const toggleWatchlist = (e: React.MouseEvent, address: string) => {
     e.stopPropagation();
     setWatchlist(prev => 
       prev.includes(address) ? prev.filter(a => a !== address) : [...prev, address]
     );
+  };
+
+  const handleCopyAddress = (e: React.MouseEvent, address: string) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(address);
+    setCopiedAddress(address);
+    setTimeout(() => setCopiedAddress(null), 2000);
   };
 
   const categories = [
@@ -30,11 +38,14 @@ export default function ExplorePage({ tokens, onSelectToken }: ExplorePageProps)
     { id: "utility", label: "Platform Utilities" }
   ];
 
-  // Filters & Searches
+  // Filters & Searches in real-time
   const filteredTokens = tokens.filter(t => {
+    const query = searchQuery.trim().toLowerCase();
     const matchesSearch = 
-      t.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      t.symbol.toLowerCase().includes(searchQuery.toLowerCase());
+      !query ||
+      t.name.toLowerCase().includes(query) || 
+      t.symbol.toLowerCase().includes(query) ||
+      (t.address && t.address.toLowerCase().includes(query));
     
     const matchesCategory = selectedCategory === "all" || t.category === selectedCategory;
 
@@ -68,27 +79,42 @@ export default function ExplorePage({ tokens, onSelectToken }: ExplorePageProps)
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search tokens by name, ticker, or contract address..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-900 border border-white/5 focus:border-brand-purple/40 text-xs text-white placeholder:text-zinc-600 focus:outline-none"
+            placeholder="Search tokens by symbol, name, or contract address (0x...)"
+            className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-zinc-900 border border-white/5 focus:border-brand-purple/40 text-xs text-white placeholder:text-zinc-600 focus:outline-none font-mono"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-2.5 text-zinc-500 hover:text-white p-0.5 rounded-full hover:bg-white/10 transition-colors"
+              title="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
-        {/* Sorting Dropdown */}
-        <div className="w-full lg:w-auto flex items-center gap-2">
-          <span className="text-zinc-500 font-mono text-xs flex items-center gap-1 shrink-0">
-            <Filter className="w-3.5 h-3.5" /> Sort By:
+        {/* Filter count & Sorting Dropdown */}
+        <div className="w-full lg:w-auto flex items-center justify-between lg:justify-end gap-3">
+          <span className="text-[11px] font-mono text-zinc-500 bg-zinc-900/80 px-2.5 py-1.5 rounded-lg border border-white/5">
+            Showing <strong className="text-brand-purple">{sortedTokens.length}</strong> / {tokens.length} tokens
           </span>
-          <select
-            id="explore-sort-select"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="bg-zinc-900 border border-white/5 px-3 py-2 text-xs text-zinc-300 rounded-xl focus:outline-none focus:border-brand-purple/40 w-full sm:w-48 font-mono"
-          >
-            <option value="trending">🔥 Volume & Activity</option>
-            <option value="marketcap">💎 Market Valuation</option>
-            <option value="newest">🕒 Recently Created</option>
-            <option value="watchlist">⭐ My Watchlist</option>
-          </select>
+
+          <div className="flex items-center gap-2">
+            <span className="text-zinc-500 font-mono text-xs flex items-center gap-1 shrink-0">
+              <Filter className="w-3.5 h-3.5" /> Sort By:
+            </span>
+            <select
+              id="explore-sort-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-zinc-900 border border-white/5 px-3 py-2 text-xs text-zinc-300 rounded-xl focus:outline-none focus:border-brand-purple/40 w-full sm:w-48 font-mono"
+            >
+              <option value="trending">🔥 Volume & Activity</option>
+              <option value="marketcap">💎 Market Valuation</option>
+              <option value="newest">🕒 Recently Created</option>
+              <option value="watchlist">⭐ My Watchlist</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -114,8 +140,18 @@ export default function ExplorePage({ tokens, onSelectToken }: ExplorePageProps)
       {sortedTokens.length === 0 ? (
         <div className="text-center py-20 bg-zinc-950/20 border border-dashed border-white/5 rounded-2xl">
           <Search className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-          <p className="text-sm text-zinc-400 font-medium">No projects match your queries.</p>
-          <p className="text-xs text-zinc-600 mt-1">Try relaxing filters or search terms.</p>
+          <p className="text-sm text-zinc-400 font-medium">No projects match your search parameters.</p>
+          <p className="text-xs text-zinc-600 mt-1">
+            {searchQuery ? `No tokens found matching "${searchQuery}". Try searching by symbol (e.g. AGL, ETH) or contract address.` : 'Try selecting another category filter.'}
+          </p>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="mt-4 px-3 py-1.5 rounded-lg bg-brand-purple/20 hover:bg-brand-purple/30 text-brand-purple text-xs font-mono font-bold transition-all"
+            >
+              Clear Search Query
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -134,7 +170,7 @@ export default function ExplorePage({ tokens, onSelectToken }: ExplorePageProps)
                 {/* Glowing border effects */}
                 <div className="absolute top-0 right-0 w-24 h-24 rounded-full bg-brand-purple/5 blur-2xl pointer-events-none group-hover:bg-brand-purple/15 transition-all"></div>
 
-                <div className="flex justify-between items-start mb-4">
+                <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center gap-3">
                     <ImageWithFallback src={t.logoUrl} alt={t.name} fallbackText={t.symbol} className="w-10 h-10 rounded-xl object-cover border border-white/5" />
                     <div>
@@ -158,6 +194,24 @@ export default function ExplorePage({ tokens, onSelectToken }: ExplorePageProps)
                       <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
                     ) : (
                       <StarOff className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Contract Address Bar */}
+                <div className="mb-3 flex items-center justify-between bg-black/40 px-2.5 py-1 rounded-lg border border-white/5 text-[10px] font-mono text-zinc-400">
+                  <span className="truncate mr-2">
+                    <span className="text-zinc-600">CA:</span> {t.address.slice(0, 8)}...{t.address.slice(-6)}
+                  </span>
+                  <button
+                    onClick={(e) => handleCopyAddress(e, t.address)}
+                    className="text-zinc-500 hover:text-white transition-colors shrink-0"
+                    title="Copy Contract Address"
+                  >
+                    {copiedAddress === t.address ? (
+                      <Check className="w-3 h-3 text-emerald-400" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
                     )}
                   </button>
                 </div>
