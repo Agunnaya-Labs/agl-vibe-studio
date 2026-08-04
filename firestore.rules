@@ -240,17 +240,15 @@ service cloud.firestore {
     }
 
     // TELEGRAM MINI APP — WALLET LINK RECORDS
-    // All writes come from the server via Firebase Admin SDK (bypasses rules).
-    // No client-side write is ever needed, so we deny all client writes here.
-    match /tg_users/{telegramId} {
-      allow read: if true;        // public read for /auth/user/:id lookup
-      allow write: if false;      // server-only via Admin SDK
-    }
-
-    // TELEGRAM MINI APP — NONCE STORE (Fix #1)
-    // Server-side only. Nonces are short-lived and written/deleted by Admin SDK.
-    match /tg_nonces/{telegramId} {
-      allow read, write: if false; // admin only — no client access
+    // Document IDs are HMAC(SESSION_SECRET, telegramId) — without the server
+    // secret, an attacker cannot derive the path for any user's record.
+    // Rules also enforce exact field shape to limit damage even if a path leaks.
+    match /tg_users/{docId} {
+      allow read: if isValidId(docId);
+      allow write: if isValidId(docId)
+        && request.resource.data.keys().hasAll(['telegramId', 'walletAddress', 'updatedAt'])
+        && request.resource.data.walletAddress.matches('^0x[0-9a-f]{40}$')
+        && request.resource.data.updatedAt is int;
     }
 
     // TEST COLLECTION

@@ -90,7 +90,8 @@ export function useWalletLink(): WalletLinkResult {
         throw new Error(body.error ?? `Auth failed (${authRes.status})`);
       }
 
-      const { telegramId, message } = await authRes.json();
+      // nonceToken is a signed JWT — opaque to the client, verified server-side
+      const { nonceToken, message } = await authRes.json();
 
       // Step 2: sign the nonce message with the user's wallet
       setStatus("awaiting-signature");
@@ -98,11 +99,11 @@ export function useWalletLink(): WalletLinkResult {
       const signer   = await provider.getSigner();
       const signature = await signer.signMessage(message);
 
-      // Step 3: link wallet → receive JWT
+      // Step 3: send nonceToken (not telegramId) — server verifies its own JWT
       const linkRes = await fetch("/api/miniapp/auth/wallet-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ telegramId, walletAddress, signature }),
+        body: JSON.stringify({ nonceToken, walletAddress, signature }),
       });
 
       if (!linkRes.ok) {
