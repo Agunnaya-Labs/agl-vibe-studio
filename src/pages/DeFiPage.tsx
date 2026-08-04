@@ -6,6 +6,7 @@ import StakingComponent from "../components/StakingComponent";
 import AirdropSweepTracker from "../components/AirdropSweepTracker";
 import LiFiBridgeComponent from "../components/LiFiBridgeComponent";
 import AIPortfolioRebalancer from "../components/AIPortfolioRebalancer";
+import DexAggregatorComponent from "../components/DexAggregatorComponent";
 import { 
   ArrowLeftRight, 
   Landmark, 
@@ -97,7 +98,7 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
   const [stakingLoading, setStakingLoading] = useState(false);
   const [selectedTierId, setSelectedTierId] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<"stake" | "positions">("stake");
-  const [defiHubTab, setDefiHubTab] = useState<"portfolio-rebalancer" | "airdrop-sweep" | "swaps-staking" | "lifi-bridge">("portfolio-rebalancer");
+  const [defiHubTab, setDefiHubTab] = useState<"dex-aggregator" | "portfolio-rebalancer" | "airdrop-sweep" | "swaps-staking" | "lifi-bridge">("dex-aggregator");
   const [currentTimeSec, setCurrentTimeSec] = useState<number>(Math.floor(Date.now() / 1000));
 
   // Web3 Status
@@ -670,6 +671,23 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
       <div className="flex flex-wrap items-center justify-between gap-4 p-2 bg-zinc-950/80 border border-white/10 rounded-2xl">
         <div className="flex flex-wrap items-center gap-2">
           <button
+            id="tab-btn-dex-aggregator"
+            type="button"
+            onClick={() => setDefiHubTab("dex-aggregator")}
+            className={`px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              defiHubTab === "dex-aggregator"
+                ? "bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white shadow-lg shadow-purple-500/20"
+                : "text-zinc-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <Zap className="w-4 h-4 text-amber-300" />
+            <span>DEX Aggregator & Multi-Routing</span>
+            <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[9px] font-bold">
+              5 DEXes
+            </span>
+          </button>
+
+          <button
             id="tab-btn-portfolio-rebalancer"
             type="button"
             onClick={() => setDefiHubTab("portfolio-rebalancer")}
@@ -741,7 +759,17 @@ export default function DeFiPage({ wallet, onRefreshWallet, addTerminalLog, show
         </div>
       </div>
 
-      {/* TAB CONTENT 0: AI PORTFOLIO REBALANCER */}
+      {/* TAB CONTENT 0: SMART DEX AGGREGATOR */}
+      {defiHubTab === "dex-aggregator" && (
+        <DexAggregatorComponent
+          wallet={wallet}
+          onRefreshWallet={onRefreshWallet}
+          addTerminalLog={addTerminalLog}
+          showToast={showToast}
+        />
+      )}
+
+      {/* TAB CONTENT 1: AI PORTFOLIO REBALANCER */}
       {defiHubTab === "portfolio-rebalancer" && (
         <AIPortfolioRebalancer
           wallet={wallet}

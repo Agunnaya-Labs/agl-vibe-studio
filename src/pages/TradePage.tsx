@@ -8,6 +8,7 @@ import TokenSecurityAudit from "../components/TokenSecurityAudit";
 import LiquidityDepthChart from "../components/LiquidityDepthChart";
 import TerminalLog, { TerminalLine } from "../components/TerminalLog";
 import ImageWithFallback from "../components/ImageWithFallback";
+import TradeConfirmationModal from "../components/TradeConfirmationModal";
 import { LineChart, Line, ResponsiveContainer, YAxis, AreaChart, Area, Tooltip as RechartsTooltip } from "recharts";
 import { 
   getSpotPrice, 
@@ -79,6 +80,7 @@ export default function TradePage({
   const [customSlippage, setCustomSlippage] = useState<string>("");
   const [gasMode, setGasMode] = useState<"standard" | "fast" | "instant">("fast");
   const [tokenBalance, setTokenBalance] = useState<number>(0);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   // Load user token balance dynamically
   const refreshLocalTokenBalance = () => {
@@ -229,8 +231,8 @@ export default function TradePage({
     }
   };
 
-  // Execute Buy / Sell Order
-  const handleExecuteTrade = (e: React.FormEvent) => {
+  // Step 1: Initiate Trade & Show Confirmation Modal Overlay
+  const handleInitiateTrade = (e: React.FormEvent) => {
     e.preventDefault();
     if (!wallet.isConnected) {
       showToast("Please connect your wallet first.", "error");
@@ -239,12 +241,9 @@ export default function TradePage({
     const num = parseFloat(inputVal) || 0;
     if (num <= 0 || tradeLoading) return;
 
-    setTradeLoading(true);
-
     // 1. Validate Token Balance for Sell Order
     if (tradeMode === "sell" && num > tokenBalance) {
       showToast(`Insufficient ${token.symbol} balance. You only have ${tokenBalance.toLocaleString()} ${token.symbol}.`, "error");
-      setTradeLoading(false);
       return;
     }
 
@@ -254,20 +253,30 @@ export default function TradePage({
     if (currentPriceImpact > activeSlippage) {
       addTerminalLog("error", `Swap failed: Price impact (${currentPriceImpact.toFixed(2)}%) exceeds slippage tolerance (${activeSlippage.toFixed(2)}%)!`);
       showToast(`Slippage limit exceeded: ${currentPriceImpact.toFixed(1)}% Impact > ${activeSlippage.toFixed(1)}% Limit. Adjust slippage tolerance or reduce amount.`, "error");
-      setTradeLoading(false);
       return;
     }
 
-    // 3. Gas Fee Calculations (Smart Accounts have zero-gas AA sponsorship)
+    // 3. Gas Fee Check
+    const gasFee = wallet.isSmartAccount ? 0 : (gasMode === "standard" ? 0.0001 : gasMode === "fast" ? 0.0002 : 0.0004);
+    if (tradeMode === "buy" && num + gasFee > wallet.balanceEth) {
+      showToast("Insufficient ETH balance to cover amount and gas fees.", "error");
+      return;
+    }
+
+    // Open confirmation modal overlay
+    setIsConfirmModalOpen(true);
+  };
+
+  // Step 2: Confirmed in Modal -> Execute Buy / Sell Order
+  const handleConfirmAndExecuteTrade = () => {
+    const num = parseFloat(inputVal) || 0;
+    if (num <= 0 || tradeLoading) return;
+
+    setTradeLoading(true);
+
     const gasFee = wallet.isSmartAccount ? 0 : (gasMode === "standard" ? 0.0001 : gasMode === "fast" ? 0.0002 : 0.0004);
 
     if (tradeMode === "buy") {
-      if (num + gasFee > wallet.balanceEth) {
-        showToast("Insufficient ETH balance to cover amount and gas fees.", "error");
-        setTradeLoading(false);
-        return;
-      }
-
       addTerminalLog("info", `Broadcasting curve BUY order via ${gasMode.toUpperCase()} gas tier (${wallet.isSmartAccount ? "AA SPONSORED" : gasFee + " ETH"})...`);
 
       setTimeout(() => {
@@ -324,19 +333,15 @@ export default function TradePage({
         });
 
         addTerminalLog("buy", `${wallet.address.slice(0, 6)}... bought +${tokensMinted.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${token.symbol} for ${num} ETH`);
+        showToast(`Successfully purchased +${tokensMinted.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${token.symbol}!`, "success");
         
         setInputVal("");
         setTradeLoading(false);
+        setIsConfirmModalOpen(false);
       }, 1500);
 
     } else {
       // Sell logic
-      if (gasFee > wallet.balanceEth) {
-        showToast("Insufficient ETH balance to cover transaction gas fee.", "error");
-        setTradeLoading(false);
-        return;
-      }
-
       addTerminalLog("info", `Initiating linear curve BURN/SELL execution for ${num} ${token.symbol} via ${gasMode.toUpperCase()} gas...`);
 
       setTimeout(() => {
@@ -392,9 +397,11 @@ export default function TradePage({
         });
 
         addTerminalLog("sell", `${wallet.address.slice(0, 6)}... sold -${num.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${token.symbol} for ${net.toFixed(5)} ETH`);
+        showToast(`Successfully sold -${num.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${token.symbol}!`, "success");
         
         setInputVal("");
         setTradeLoading(false);
+        setIsConfirmModalOpen(false);
       }, 1500);
     }
   };
@@ -722,7 +729,7 @@ export default function TradePage({
                 </button>
               </div>
 
-              <form onSubmit={handleExecuteTrade} className="space-y-4">
+              <form onSubmit={handleInitiateTrade} className="space-y-4">
                 {/* Amount input with balance helper and MAX shortcut buttons */}
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
@@ -850,6 +857,17 @@ export default function TradePage({
                       <Info className="w-3 h-3 flex-shrink-0" /> High slippage: High sandwich / frontrunning risk.
                     </p>
                   )}
+                </div>
+
+                {/* DEX Aggregator Route Telemetry */}
+                <div className="py-2 px-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-[10px] text-purple-300 font-mono flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                    Multi-DEX Aggregator Active
+                  </span>
+                  <span className="text-[9px] text-zinc-400">
+                    1inch • Aerodrome • 0x • UniV3
+                  </span>
                 </div>
 
                 {/* Gas / Speed Settings Panel */}
@@ -1153,6 +1171,26 @@ export default function TradePage({
 
         </div>
       </div>
+
+      {/* Trade Confirmation Overlay Modal */}
+      <TradeConfirmationModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => {
+          if (!tradeLoading) setIsConfirmModalOpen(false);
+        }}
+        onConfirm={handleConfirmAndExecuteTrade}
+        tradeMode={tradeMode}
+        token={token}
+        inputAmount={parseFloat(inputVal) || 0}
+        estimatedOutput={estimatedOutput}
+        priceImpact={getPriceImpact()}
+        slippage={slippage}
+        gasMode={gasMode}
+        gasFee={wallet.isSmartAccount ? 0 : (gasMode === "standard" ? 0.0001 : gasMode === "fast" ? 0.0002 : 0.0004)}
+        isSmartAccount={wallet.isSmartAccount}
+        walletBalanceEth={wallet.balanceEth}
+        isLoading={tradeLoading}
+      />
     </div>
   );
 }

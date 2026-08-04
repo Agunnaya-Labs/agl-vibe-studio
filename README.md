@@ -74,19 +74,34 @@ Agunnaya Labs Studio features a tailored **Immersive UI** design system built fo
 *   **20% Platform Fee Split**: Referrers earn exactly 20% of all bonding curve swaps and trading fees automatically in real-time AGL tokens.
 *   **On-Chain Payout Claims**: Interactive dashboard tracking referred user signups, total volume generated, and instant claim settlements.
 
-### 5. 🏦 DeFi Engine, AMM Swapping & Staking Vaults
+### 7. 🛡️ Pre-Trade Confirmation Modal & Fee Telemetry Overlay
+*   **Total Cost Breakdown in ETH**: Instant calculation of total required ETH (token price + creator fees + estimated gas).
+*   **Slippage & Price Impact Shield**: Live display of configured slippage tolerance, linear curve price impact %, and minimum guaranteed token output.
+*   **Gas Speed & Account Abstraction Telemetry**: Displays selected gas tier (Standard, Fast, Instant, or 100% Sponsored AA Relayer) with live gwei estimates.
+
+### 8. 🔀 Smart DEX Aggregator & Multi-Route Routing Engine
+*   **Multi-DEX Rate Comparison**: Real-time quote aggregation across 1inch Aggregator V6, 0x Protocol / Matcha, Aerodrome Finance (Base Native), Uniswap V3, and Paraswap.
+*   **Optimal Route Splitting**: Automatically computes multi-hop route split percentages (e.g., 65% Aerodrome + 35% Uniswap V3) to maximize output and minimize price impact for $AGL tokens.
+*   **Gas & Execution Optimization**: Highlights lowest-gas routes, price impact metrics, MEV protection shields, and execution latency.
+
+### 9. ✨ High-Craft CSS Transitions & UI Micro-Interactions
+*   **Subtle Elevation & Glow Keyframes**: Smooth 0.25s bezier curve transitions on all dashboard cards, glass panels, and interactive controls (`.agunnaya-card`, `.glass-panel-hover`).
+*   **Modal Pop-Up Backdrop Blur & Scale-Up**: Custom CSS keyframe animations for modal pop-up entrances with backdrop blur and fluid scale transitions (`.animate-modal-backdrop`, `.animate-modal-panel`).
+*   **Interactive Micro-Feedback**: Active state scale drops and subtle hover brightness adjustments across Web3 buttons and navigation tabs (`.btn-agunnaya`, `.agunnaya-tab`).
+
+### 10. 🏦 DeFi Engine, AMM Swapping & Staking Vaults
 *   **Low-Slippage Swaps**: Instantly swap between ETH and native AGL utility tokens on Base Mainnet.
 *   **Staking Vaults & Auto-Compound Engine**: Stake AGL in high-yield vaults (Flex, 30-Day, 90-Day, 180-Day) with fixed APRs up to 64%. Toggle the **Auto-Compound Rewards** switch to automatically reinvest accrued yield every 30 seconds or trigger 1-click manual compounding for amplified APY.
 *   **Base Mainnet Airdrop & Treasury Sweep Tracker**: Monitor active token distribution sweeps and treasury multisigs (3/5 Safe) on Base Mainnet with real-time on-chain balance updates, verification badges, and historical sweep activity logs.
 
-### 6. 🗳️ DAO Builder & Decentralized Governance
+### 11. 🗳️ DAO Builder & Decentralized Governance
 *   **Multi-Sig DAOs**: Create DAOs with custom proposal thresholds, quorum percentages, and lock durations.
 *   **Cryptographic Voting**: Cast weighted ballots FOR or AGAINST proposals in real time with live voting power tallying.
 
-### 7. 🎨 NFT Studio & Generative Arts
+### 12. 🎨 NFT Studio & Generative Arts
 *   **ERC-721 Collections**: Deploy generative NFT collections with custom metadata schemas, IPFS image links, and public minting pricing.
 
-### 8. 🎮 GameFi Arena & XP Rewards
+### 13. 🎮 GameFi Arena & XP Rewards
 *   **On-Chain Quests**: Complete quests (token swaps, DAO votes, staking) to earn XP points and claim seasonal AGL token bounties.
 
 ---
