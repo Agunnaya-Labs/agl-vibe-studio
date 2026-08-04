@@ -240,14 +240,17 @@ service cloud.firestore {
     }
 
     // TELEGRAM MINI APP — WALLET LINK RECORDS
-    // Written server-side via Firestore REST API using the web API key.
-    // Each document stores: telegramId, walletAddress, updatedAt.
-    // Public read is intentionally allowed so the /auth/user/:id lookup works.
-    // Write is open (no Firebase Auth on the server route) — tighten this
-    // once Firebase Admin SDK is set up with a service account secret.
+    // All writes come from the server via Firebase Admin SDK (bypasses rules).
+    // No client-side write is ever needed, so we deny all client writes here.
     match /tg_users/{telegramId} {
-      allow read: if true;
-      allow write: if isValidId(telegramId);
+      allow read: if true;        // public read for /auth/user/:id lookup
+      allow write: if false;      // server-only via Admin SDK
+    }
+
+    // TELEGRAM MINI APP — NONCE STORE (Fix #1)
+    // Server-side only. Nonces are short-lived and written/deleted by Admin SDK.
+    match /tg_nonces/{telegramId} {
+      allow read, write: if false; // admin only — no client access
     }
 
     // TEST COLLECTION

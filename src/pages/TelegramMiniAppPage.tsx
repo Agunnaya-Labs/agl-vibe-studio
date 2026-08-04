@@ -93,9 +93,10 @@ export default function TelegramMiniAppPage({
         <p className="text-xs font-mono uppercase tracking-widest text-zinc-500">API Endpoints</p>
         <div className="space-y-2 font-mono text-xs">
           {[
-            { method: "POST", path: "/api/miniapp/auth/telegram", desc: "Exchange initData → nonce" },
+            { method: "POST", path: "/api/miniapp/auth/telegram", desc: "Exchange initData → nonce (Firestore)" },
             { method: "POST", path: "/api/miniapp/auth/wallet-link", desc: "Submit signature → JWT" },
             { method: "GET",  path: "/api/miniapp/auth/user/:telegramId", desc: "Look up linked wallet" },
+            { method: "POST", path: "/api/miniapp/bot/webhook", desc: "/link command handler" },
           ].map((ep) => (
             <div
               key={ep.path}
@@ -118,8 +119,20 @@ export default function TelegramMiniAppPage({
         <p className="text-[10px] text-zinc-600 leading-relaxed">
           Protected endpoints accept{" "}
           <code className="text-zinc-400">Authorization: Bearer &lt;token&gt;</code> headers.
-          The JWT is signed with <code className="text-zinc-400">SESSION_SECRET</code> and expires in 12 h.
+          JWT signed with <code className="text-zinc-400">SESSION_SECRET</code> · expires 12 h ·
+          nonces stored in Firestore <code className="text-zinc-400">tg_nonces</code> collection.
         </p>
+
+        {/* Webhook registration snippet */}
+        <div className="mt-3 space-y-1">
+          <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-mono">Register bot webhook</p>
+          <div className="bg-black/40 border border-white/5 rounded-lg p-3 font-mono text-[10px] text-zinc-400 break-all leading-relaxed">
+            {"curl \"https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://YOUR_DOMAIN/api/miniapp/bot/webhook&secret_token=YOUR_WEBHOOK_SECRET\""}
+          </div>
+          <p className="text-[10px] text-zinc-600">
+            Set <code className="text-zinc-400">TELEGRAM_WEBHOOK_SECRET</code> as a Replit secret to authenticate incoming updates.
+          </p>
+        </div>
       </div>
     </div>
   );

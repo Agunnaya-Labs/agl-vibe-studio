@@ -49,6 +49,8 @@ firestore.rules                  # Firestore security rules
 | `GEMINI_API_KEY` | Google Gemini AI — all AI endpoints |
 | `SESSION_SECRET` | JWT signing key for Telegram Mini App sessions (32+ chars) |
 | `TELEGRAM_BOT_TOKEN` | Telegram Bot token from @BotFather — HMAC initData validation |
+| `FIREBASE_SERVICE_ACCOUNT` | Firebase service account JSON — enables Admin SDK (privileged Firestore writes, bypasses security rules). Get from Firebase Console → Project Settings → Service Accounts → Generate New Private Key. |
+| `TELEGRAM_WEBHOOK_SECRET` | Optional random string to authenticate incoming Telegram webhook updates. Pass as `secret_token` when registering the webhook URL. |
 
 ## Telegram Mini App Integration
 
